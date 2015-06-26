@@ -6,6 +6,7 @@
 #include <string>
 #include <type_traits>
 #include <new>
+#include <utility>
 
 namespace std{
 namespace experimental{
@@ -320,6 +321,15 @@ public:
     constexpr ptrdiff_t index() const noexcept{
         return __index;
     }
+
+    void swap(variant& __other){
+        if(__other.__index==__index){
+            __variant_constructor<0,_Types...>::__swap(this,__other);
+        }
+        else{
+            std::swap(*this,__other);
+        }
+    }
 };
 
 template<ptrdiff_t _Index,typename ... _Types>
@@ -371,6 +381,18 @@ struct __variant_constructor{
             __variant_constructor<
                 __next_index<_Index,_Types...>::__value,_Types...>::
                 __move_assign(__self,__other);
+        }
+    }
+    static constexpr void __swap(
+        variant<_Types...>* __self,
+        variant<_Types...>& __other){
+        if(_Index==__other.index()){
+            swap(get<_Index>(*__self),get<_Index>(__other));
+        }
+        else{
+            __variant_constructor<
+                __next_index<_Index,_Types...>::__value,_Types...>::
+                __swap(__self,__other);
         }
     }
     static constexpr void __destroy(

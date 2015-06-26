@@ -448,6 +448,51 @@ void emplace_by_index_of_diff_types_destroys_old(){
     assert(se::get<CopyCounter>(v).move_assign==0);
 }
 
+void swap_same_type(){
+    se::variant<int,CopyCounter> v{CopyCounter()};
+    assert(se::get<CopyCounter>(v).copy_construct==0);
+    assert(se::get<CopyCounter>(v).move_construct==1);
+    assert(se::get<CopyCounter>(v).copy_assign==0);
+    assert(se::get<CopyCounter>(v).move_assign==0);
+
+    CopyCounter cc;
+    se::variant<int,CopyCounter> v2{cc};
+    assert(se::get<CopyCounter>(v2).copy_construct==1);
+    assert(se::get<CopyCounter>(v2).move_construct==0);
+    assert(se::get<CopyCounter>(v2).copy_assign==0);
+    assert(se::get<CopyCounter>(v2).move_assign==0);
+    v.swap(v2);
+
+    assert(v.index()==1);
+    assert(v2.index()==1);
+    assert(se::get<CopyCounter>(v).copy_construct==1);
+    assert(se::get<CopyCounter>(v).move_construct==0);
+    assert(se::get<CopyCounter>(v).copy_assign==0);
+    assert(se::get<CopyCounter>(v).move_assign==1);
+    assert(se::get<CopyCounter>(v2).copy_construct==0);
+    assert(se::get<CopyCounter>(v2).move_construct==2);
+    assert(se::get<CopyCounter>(v2).copy_assign==0);
+    assert(se::get<CopyCounter>(v2).move_assign==1);
+}
+
+void swap_different_types(){
+    se::variant<int,CopyCounter> v{CopyCounter()};
+    assert(se::get<CopyCounter>(v).copy_construct==0);
+    assert(se::get<CopyCounter>(v).move_construct==1);
+    assert(se::get<CopyCounter>(v).copy_assign==0);
+    assert(se::get<CopyCounter>(v).move_assign==0);
+
+    se::variant<int,CopyCounter> v2{42};
+    v.swap(v2);
+
+    assert(v.index()==0);
+    assert(v2.index()==1);
+    assert(se::get<CopyCounter>(v2).copy_construct==0);
+    assert(se::get<CopyCounter>(v2).move_construct==3);
+    assert(se::get<CopyCounter>(v2).copy_assign==0);
+    assert(se::get<CopyCounter>(v2).move_assign==0);
+}
+
 int main(){
     initial_is_empty();
     empty_index_is_neg_one();
@@ -483,4 +528,6 @@ int main(){
     emplace_by_index_to_empty();
     emplace_by_index_to_same_type();
     emplace_by_index_of_diff_types_destroys_old();
+    swap_same_type();
+    swap_different_types();
 }
