@@ -15,6 +15,9 @@ struct empty_t{};
 template<typename _Type>
 struct emplaced_type_t{};
 
+template<ptrdiff_t _Index>
+struct emplaced_index_t{};
+
 class bad_variant_access: public std::logic_error{
 public:
     explicit bad_variant_access(const std::string& what_arg):
@@ -226,6 +229,15 @@ public:
         __index(__emplace_construct<_Type>(std::forward<_Args>(__args)...))
     {}
 
+    template<ptrdiff_t _Index,typename ... _Args>
+    constexpr variant(emplaced_index_t<_Index>,_Args&& ... __args):
+        __index(
+            (__emplace_construct<
+             typename __indexed_type<_Index,_Types...>::__type>(
+                 std::forward<_Args>(__args)...),
+             _Index))
+    {}
+    
     ~variant(){
         __destroy_self();
     }
