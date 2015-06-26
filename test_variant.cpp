@@ -375,12 +375,11 @@ void assignment_from_value_of_diff_types_destroys_old(){
     se::variant<InstanceCounter,CopyCounter> v{InstanceCounter()};
     assert(v.index()==0);
     assert(InstanceCounter::instances==1);
-    CopyCounter cc;
-    v=cc;
+    v=CopyCounter();
     assert(v.index()==1);
     assert(InstanceCounter::instances==0);
-    assert(se::get<CopyCounter>(v).copy_construct==1);
-    assert(se::get<CopyCounter>(v).move_construct==0);
+    assert(se::get<CopyCounter>(v).copy_construct==0);
+    assert(se::get<CopyCounter>(v).move_construct==1);
     assert(se::get<CopyCounter>(v).copy_assign==0);
     assert(se::get<CopyCounter>(v).move_assign==0);
 }
