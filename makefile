@@ -1,7 +1,8 @@
 .PHONY: test
 
-CXXFLAGS=-std=c++14 -Wall
+CXXFLAGS=-std=c++14 -Wall -g
 CC=g++
+LDFLAGS=-g
 
 test: test_variant
 	./test_variant

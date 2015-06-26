@@ -143,6 +143,49 @@ struct __descriminator_type{
     typedef signed char __type;
 };
 
+template<typename _Type>
+struct __stored_type{
+    typedef _Type __type;
+    template<typename ... _Args>
+    static constexpr void __construct(void* __storage,_Args&& ... __args){
+        new (__storage) _Type(std::forward<_Args>(__args)...);
+    }
+
+    static constexpr _Type& __get(void* __storage){
+        return *static_cast<__type*>(__storage);
+    }
+
+    static constexpr const _Type& __get(const void* __storage){
+        return *static_cast<const __type*>(__storage);
+    }
+    
+    static void __destroy(void* __storage){
+        static_cast<__type*>(__storage)->~__type();
+    }
+};
+
+template<typename _Type>
+struct __stored_type<_Type&>{
+    typedef _Type* __type;
+
+    template<typename  _Arg>
+    static constexpr void __construct(void* __storage,_Arg& __arg){
+        new (__storage) __type(&__arg);
+    }
+
+    static constexpr _Type& __get(void* __storage){
+        return **static_cast<__type*>(__storage);
+    }
+
+    static constexpr const _Type& __get(const void* __storage){
+        return **static_cast<const __type*>(__storage);
+    }
+    
+    static void __destroy(void* __storage){
+        static_cast<__type*>(__storage)->~__type();
+    }
+};
+
 template<typename ... _Types>
 struct __max_size;
 
@@ -153,14 +196,17 @@ struct __max_size<>{
 
 template<typename _Type>
 struct __max_size<_Type>{
-    static constexpr size_t __value=sizeof(_Type);
+    static constexpr size_t __value=
+        sizeof(typename __stored_type<_Type>::__type);
 };
 
 template<typename _Head,typename ... _Rest>
 struct __max_size<_Head,_Rest...>{
+    static constexpr size_t __this_size=
+        sizeof(typename __stored_type<_Head>::__type);
     static constexpr size_t __rest_max=__max_size<_Rest...>::__value;
     static constexpr size_t __value=
-        (__rest_max>sizeof(_Head))?__rest_max:sizeof(_Head);
+        (__rest_max>__this_size)?__rest_max:__this_size;
 };
 
 template<typename ... _Types>
@@ -173,14 +219,17 @@ struct __max_align<>{
 
 template<typename _Type>
 struct __max_align<_Type>{
-    static constexpr size_t __value=alignof(_Type);
+    static constexpr size_t __value=
+        alignof(typename __stored_type<_Type>::__type);
 };
 
 template<typename _Head,typename ... _Rest>
 struct __max_align<_Head,_Rest...>{
+    static constexpr size_t __this_align=
+        alignof(typename __stored_type<_Head>::__type);
     static constexpr size_t __rest_max=__max_align<_Rest...>::__value;
     static constexpr size_t __value=
-        (__rest_max>alignof(_Head))?__rest_max:alignof(_Head);
+        (__rest_max>__this_align)?__rest_max:__this_align;
 };
 
 template<typename ... _Types>
@@ -193,13 +242,17 @@ struct __variant_ops{
     template<typename _Type>
     static void __copy_construct_func(
         __variant_type* __self,__variant_type const& __other){
-        __self->__construct(get<_Type>(__other));
+        __stored_type<_Type>::__construct(
+            &__self->__storage,
+            __stored_type<_Type>::__get(&__other.__storage));
     }
 
     template<typename _Type>
     static void __move_construct_func(
         __variant_type* __self,__variant_type& __other){
-        __self->__construct(std::move(get<_Type>(__other)));
+        __stored_type<_Type>::__construct(
+            &__self->__storage,
+            std::move(__stored_type<_Type>::__get(&__other.__storage)));
     }
     
     template<typename _Type>
@@ -217,7 +270,7 @@ struct __variant_ops{
 
     template<typename _Type>
     static void __destroy_func(__variant_type* __self){
-        __self->template __destroy<_Type>();
+        __stored_type<_Type>::__destroy(&__self->__storage);
     }
     
     template<typename _Type>
@@ -282,33 +335,21 @@ class variant: private empty_t{
         __max_align<_Types...>::__value>::type __storage;
     typename __descriminator_type<sizeof ... (_Types)>::__type __index;
 
-    template<typename _Type>
-    void __construct(_Type&& __x){
-        new (static_cast<void*>(&__storage))
-            typename std::remove_reference<_Type>::type
-            (std::forward<_Type>(__x));
-    }
-
     template<typename _Type,typename ... _Args>
     ptrdiff_t __emplace_construct(_Args&& ... __args){
-        new (static_cast<void*>(&__storage))
-            typename std::remove_reference<_Type>::type
-            (std::forward<_Args>(__args)...);
+        __stored_type<_Type>::__construct(
+            &__storage,std::forward<_Args>(__args)...);
         return  __type_index<_Type,_Types...>::__value;
     }
     
     void __destroy_self(){
         if(__index==-1)
             return;
-        __variant_ops<_Types...>::__destroy[__index](this);
+        ptrdiff_t const __old_index=__index;
+        __index=-1;
+        __variant_ops<_Types...>::__destroy[__old_index](this);
     }
     
-    template<typename _Type>
-    void __destroy(){
-        __index=-1;
-        static_cast<_Type*>(static_cast<void*>(&__storage))->~_Type();
-    }
-
     ptrdiff_t __move_construct(variant& __other){
         ptrdiff_t const __other_index=__other.index();
         if(__other_index==-1)
@@ -363,26 +404,22 @@ public:
     
     template<typename _Type>
     constexpr variant(_Type&& __x):
-        __index(
-            (__construct(std::forward<_Type>(__x)),
-             __type_index<
-             typename std::remove_const<
-             typename std::remove_reference<_Type>::type>::type,
-             _Types...>::__value))
+        __index(__emplace_construct<typename std::remove_const<
+                typename std::remove_reference<_Type>::type>::type>(
+                    std::forward<_Type>(__x)))
     {}
 
     template<typename _Type>
     variant& operator=(_Type&& __x){
-        constexpr ptrdiff_t _Index=__type_index<
-            typename std::remove_const<
-                typename std::remove_reference<_Type>::type>::type,
-            _Types...>::__value;
+        typedef typename std::remove_const<
+            typename std::remove_reference<_Type>::type>::type __type;
+        constexpr ptrdiff_t _Index=__type_index<__type,_Types...>::__value;
         if(_Index==__index){
             get<_Index>(*this)=std::forward<_Type>(__x);
         }
         else{
             __destroy_self();
-            __construct(std::forward<_Type>(__x));
+            __stored_type<__type>::__construct(&__storage,std::forward<_Type>(__x));
             __index=_Index;
         }
         return *this;
@@ -473,17 +510,11 @@ struct __variant_accessor<-1,_Types...>{
 template<ptrdiff_t _Index,typename ... _Types>
 struct __variant_accessor{
     typedef typename __indexed_type<_Index,_Types...>::__type __type;
-    static constexpr __type* get_ptr(variant<_Types...>& __v){
-        return static_cast<__type*>(static_cast<void*>(&__v.__storage));
-    }
-    static constexpr __type const* get_ptr(variant<_Types...> const& __v){
-        return static_cast<__type const*>(static_cast<void const*>(&__v.__storage));
-    }
     static constexpr __type& get(variant<_Types...>& __v){
-        return *get_ptr(__v);
+        return __stored_type<__type>::__get(&__v.__storage);
     }
     static constexpr __type const& get(variant<_Types...> const& __v){
-        return *get_ptr(__v);
+        return __stored_type<__type>::__get(&__v.__storage);
     }
 };
 

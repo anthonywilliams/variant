@@ -533,6 +533,14 @@ void visit(){
     assert(s=="hello");
 }
 
+void reference_members(){
+    int i=42;
+    se::variant<int&> v(se::emplaced_index_t<0>(),i);
+
+    assert(v.index()==0);
+    assert(&se::get<int&>(v)==&i);
+}
+
 int main(){
     initial_is_empty();
     empty_index_is_neg_one();
@@ -573,4 +581,5 @@ int main(){
     assign_empty_to_empty();
     swap_empties();
     visit();
+    reference_members();
 }
