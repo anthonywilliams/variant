@@ -1,0 +1,17 @@
+// -*- C++ -*-
+#ifndef _JSS_EXPERIMENTAL_VARIANT_HEADER
+#define _JSS_EXPERIMENTAL_VARIANT_HEADER
+
+namespace std{
+namespace experimental{
+template<typename ... _Types>
+class variant{
+public:
+    constexpr bool empty() noexcept{
+        return true;
+    }
+};
+}
+}
+
+#endif
