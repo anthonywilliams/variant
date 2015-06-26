@@ -416,6 +416,38 @@ void emplace_from_value_of_diff_types_destroys_old(){
     assert(se::get<CopyCounter>(v).move_assign==0);
 }
 
+void emplace_by_index_to_empty(){
+    const char* const msg="hello";
+    se::variant<int,char const*,std::string> v;
+    v.emplace<2>(msg);
+    assert(v.index()==2);
+    assert(se::get<2>(v)==msg);
+}
+
+void emplace_by_index_to_same_type(){
+    CopyCounter cc;
+    se::variant<int,CopyCounter> v(cc);
+    v.emplace<1>();
+    assert(v.index()==1);
+    assert(se::get<CopyCounter>(v).copy_construct==0);
+    assert(se::get<CopyCounter>(v).move_construct==0);
+    assert(se::get<CopyCounter>(v).copy_assign==0);
+    assert(se::get<CopyCounter>(v).move_assign==0);
+}
+
+void emplace_by_index_of_diff_types_destroys_old(){
+    se::variant<InstanceCounter,CopyCounter> v{InstanceCounter()};
+    assert(v.index()==0);
+    assert(InstanceCounter::instances==1);
+    v.emplace<1>();
+    assert(v.index()==1);
+    assert(InstanceCounter::instances==0);
+    assert(se::get<CopyCounter>(v).copy_construct==0);
+    assert(se::get<CopyCounter>(v).move_construct==0);
+    assert(se::get<CopyCounter>(v).copy_assign==0);
+    assert(se::get<CopyCounter>(v).move_assign==0);
+}
+
 int main(){
     initial_is_empty();
     empty_index_is_neg_one();
@@ -448,4 +480,7 @@ int main(){
     emplace_from_value_to_empty();
     emplace_from_value_to_same_type();
     emplace_from_value_of_diff_types_destroys_old();
+    emplace_by_index_to_empty();
+    emplace_by_index_to_same_type();
+    emplace_by_index_of_diff_types_destroys_old();
 }
