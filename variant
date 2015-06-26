@@ -170,12 +170,32 @@ struct __variant_ops{
         __self->__construct(std::move(get<_Type>(__other)));
     }
     
+    template<typename _Type>
+    static void __copy_assign_func(
+        __variant_type* __self,__variant_type const& __other){
+        get<_Type>(*__self)=get<_Type>(__other);
+    }
+
+    template<typename _Type>
+    static void __move_assign_func(
+        __variant_type* __self,__variant_type& __other){
+        get<_Type>(*__self)=std::move(get<_Type>(__other));
+        __other.__destroy_self();
+    }
+    
     static constexpr __copy_func_type __copy_construct[sizeof...(_Types)]={
         &__copy_construct_func<_Types>...
     };
     static constexpr __move_func_type __move_construct[sizeof...(_Types)]={
         &__move_construct_func<_Types>...
     };
+    static constexpr __copy_func_type __copy_assign[sizeof...(_Types)]={
+        &__copy_assign_func<_Types>...
+    };
+    static constexpr __move_func_type __move_assign[sizeof...(_Types)]={
+        &__move_assign_func<_Types>...
+    };
+
 };
 
 template<typename ... _Types>
@@ -185,6 +205,14 @@ __variant_ops<_Types...>::__copy_construct[sizeof...(_Types)];
 template<typename ... _Types>
 constexpr typename __variant_ops<_Types...>::__move_func_type
 __variant_ops<_Types...>::__move_construct[sizeof...(_Types)];
+
+template<typename ... _Types>
+constexpr typename __variant_ops<_Types...>::__copy_func_type
+__variant_ops<_Types...>::__copy_assign[sizeof...(_Types)];
+
+template<typename ... _Types>
+constexpr typename __variant_ops<_Types...>::__move_func_type
+__variant_ops<_Types...>::__move_assign[sizeof...(_Types)];
 
 template<typename ... _Types>
 class variant: private empty_t{
@@ -307,8 +335,11 @@ public:
     }
 
     variant& operator=(variant const& __other){
-        if(__other.__index==__index){
-            __variant_constructor<0,_Types...>::__copy_assign(this,__other);
+        if(__other.__index==-1){
+            __destroy_self();
+        }
+        else if(__other.__index==__index){
+            __variant_ops<_Types...>::__copy_assign[__index](this,__other);
         }
         else{
             __destroy_self();
@@ -317,8 +348,11 @@ public:
         return *this;
     }
     variant& operator=(variant& __other){
-        if(__other.__index==__index){
-            __variant_constructor<0,_Types...>::__copy_assign(this,__other);
+        if(__other.__index==-1){
+            __destroy_self();
+        }
+        else if(__other.__index==__index){
+            __variant_ops<_Types...>::__copy_assign[__index](this,__other);
         }
         else{
             __destroy_self();
@@ -327,8 +361,11 @@ public:
         return *this;
     }
     variant& operator=(variant&& __other){
-        if(__other.__index==__index){
-            __variant_constructor<0,_Types...>::__move_assign(this,__other);
+        if(__other.__index==-1){
+            __destroy_self();
+        }
+        else if(__other.__index==__index){
+            __variant_ops<_Types...>::__move_assign[__index](this,__other);
         }
         else{
             __destroy_self();
@@ -370,31 +407,6 @@ public:
 
 template<ptrdiff_t _Index,typename ... _Types>
 struct __variant_constructor{
-    static constexpr void __copy_assign(
-        variant<_Types...>* __self,
-        variant<_Types...> const& __other){
-        if(_Index==__other.index()){
-            get<_Index>(*__self)=get<_Index>(__other);
-        }
-        else{
-            __variant_constructor<
-                __next_index<_Index,_Types...>::__value,_Types...>::
-                __copy_assign(__self,__other);
-        }
-    }
-    static constexpr void __move_assign(
-        variant<_Types...>* __self,
-        variant<_Types...>& __other){
-        if(_Index==__other.index()){
-            get<_Index>(*__self)=std::move(get<_Index>(__other));
-            __other.__destroy_self();
-        }
-        else{
-            __variant_constructor<
-                __next_index<_Index,_Types...>::__value,_Types...>::
-                __move_assign(__self,__other);
-        }
-    }
     static constexpr void __swap(
         variant<_Types...>* __self,
         variant<_Types...>& __other){
