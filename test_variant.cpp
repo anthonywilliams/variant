@@ -21,8 +21,15 @@ void get_empty_t_works_for_empty(){
     assert(&e1==&e2);
 }
 
+void can_construct_first_type(){
+    se::variant<int> v(42);
+    assert(v.index()==0);
+}
+
 int main(){
     initial_is_empty();
     empty_index_is_neg_one();
     get_empty_t_works_for_empty();
+    can_construct_first_type();
+    
 }

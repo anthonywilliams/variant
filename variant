@@ -20,13 +20,29 @@ public:
     {}
 };
 
+template<ptrdiff_t _Offset,typename _Type,typename _Head,typename ... _Rest>
+struct __type_index_helper{
+    static constexpr ptrdiff_t __value=
+        __type_index_helper<_Offset+1,_Head,_Rest...>::__value;
+};
+
+template<ptrdiff_t _Offset,typename _Type,typename ... _Rest>
+struct __type_index_helper<_Offset,_Type,_Type,_Rest...>{
+    static constexpr ptrdiff_t __value=_Offset;
+};
+
 template<typename _Type,typename ... _Types>
-struct __type_index;
+struct __type_index{
+    static constexpr ptrdiff_t __value=
+        __type_index_helper<0,_Type,_Types...>::__value;
+};
 
 template<typename ... _Types>
 struct __type_index<empty_t,_Types...>{
     static constexpr ptrdiff_t __value=-1;
 };
+
+
 
 template<ptrdiff_t _Index,typename ... _Types>
 struct __indexed_type;
@@ -63,18 +79,33 @@ typename __indexed_type<_Index,_Types...>::__type& get(variant<_Types...>&);
 template<ptrdiff_t _Index,typename ... _Types>
 struct __variant_accessor;
 
+template<size_t __count>
+struct __descriminator_type{
+    typedef signed char __type;
+};
 
 template<typename ... _Types>
 class variant: private empty_t{
     template<ptrdiff_t _Index,typename ... _Types2>
     friend struct __variant_accessor;
+
+    typename __descriminator_type<sizeof ... (_Types)>::__type __index;
     
 public:
+    constexpr variant() noexcept:
+        __index(-1)
+    {}
+
+    template<typename _Type>
+    constexpr variant(_Type&& __x):
+        __index(__type_index<_Type,_Types...>::__value)
+    {}
+    
     constexpr bool empty() const noexcept{
         return true;
     }
     constexpr ptrdiff_t index() const noexcept{
-        return -1;
+        return __index;
     }
 };
 
