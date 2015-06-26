@@ -224,6 +224,34 @@ void copy_assignment_from_empty(){
     assert(InstanceCounter::instances==0);
 }
 
+struct CopyError{};
+
+struct ThrowingCopy{
+    ThrowingCopy(){}
+    ThrowingCopy(ThrowingCopy const&){
+        throw CopyError();
+    }
+    ThrowingCopy(ThrowingCopy&&){}
+    ThrowingCopy operator=(ThrowingCopy const&){
+        throw CopyError();
+    }
+};
+
+void throwing_copy_assign_leaves_target_empty(){
+    se::variant<InstanceCounter,ThrowingCopy> v=InstanceCounter();
+    assert(v.index()==0);
+    assert(InstanceCounter::instances==1);
+    se::variant<InstanceCounter,ThrowingCopy> v2{ThrowingCopy()};
+    try{
+        v=v2;
+        assert(!"Exception should be thrown");
+    }
+    catch(CopyError&){
+    }
+    assert(v.index()==-1);
+    assert(InstanceCounter::instances==0);
+}
+
 int main(){
     initial_is_empty();
     empty_index_is_neg_one();
@@ -241,4 +269,5 @@ int main(){
     copy_assignment_to_empty();
     copy_assignment_of_diff_types_destroys_old();
     copy_assignment_from_empty();
+    throwing_copy_assign_leaves_target_empty();
 }
