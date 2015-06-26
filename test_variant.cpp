@@ -319,6 +319,14 @@ void move_assignment_from_empty(){
     assert(InstanceCounter::instances==0);
 }
 
+void emplace_construction_by_type(){
+    const char* const msg="hello";
+    se::variant<int,char const*,std::string> v(
+        se::emplaced_type_t<std::string>(),msg);
+    assert(v.index()==2);
+    assert(se::get<2>(v)==msg);
+}
+
 int main(){
     initial_is_empty();
     empty_index_is_neg_one();
@@ -341,4 +349,5 @@ int main(){
     move_assignment_same_type();
     move_assignment_of_diff_types_destroys_old();
     move_assignment_from_empty();
+    emplace_construction_by_type();
 }
