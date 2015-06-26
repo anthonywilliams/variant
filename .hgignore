@@ -1,0 +1,4 @@
+syntax: glob
+
+*.o
+test_variant
