@@ -2,11 +2,73 @@
 #ifndef _JSS_EXPERIMENTAL_VARIANT_HEADER
 #define _JSS_EXPERIMENTAL_VARIANT_HEADER
 #include <stddef.h>
+#include <stdexcept>
+#include <string>
 
 namespace std{
 namespace experimental{
+
+struct empty_t{};
+
+class bad_variant_access: public std::logic_error{
+public:
+    explicit bad_variant_access(const std::string& what_arg):
+        std::logic_error(what_arg)
+    {}
+    explicit bad_variant_access(const char* what_arg):
+        std::logic_error(what_arg)
+    {}
+};
+
+template<typename _Type,typename ... _Types>
+struct __type_index;
+
 template<typename ... _Types>
-class variant{
+struct __type_index<empty_t,_Types...>{
+    static constexpr ptrdiff_t __value=-1;
+};
+
+template<ptrdiff_t _Index,typename ... _Types>
+struct __indexed_type;
+
+template<typename ... _Types>
+struct __indexed_type<-1,_Types...>{
+    typedef empty_t __type;
+};
+
+template<typename _Head,typename ... _Rest>
+struct __indexed_type<-1,_Head,_Rest...>{
+    typedef empty_t __type;
+};
+
+template<typename _Head,typename ... _Rest>
+struct __indexed_type<0,_Head,_Rest...>{
+    typedef _Head __type;
+};
+
+template<ptrdiff_t _Index,typename _Head,typename ... _Rest>
+struct __indexed_type<_Index,_Head,_Rest...>{
+    typedef typename __indexed_type<_Index-1,_Rest...>::__type __type;
+};
+
+template<typename ... _Types>
+class variant;
+
+template<typename _Type,typename ... _Types>
+_Type& get(variant<_Types...>&);
+
+template<ptrdiff_t _Index,typename ... _Types>
+typename __indexed_type<_Index,_Types...>::__type& get(variant<_Types...>&);
+
+template<ptrdiff_t _Index,typename ... _Types>
+struct __variant_accessor;
+
+
+template<typename ... _Types>
+class variant: private empty_t{
+    template<ptrdiff_t _Index,typename ... _Types2>
+    friend struct __variant_accessor;
+    
 public:
     constexpr bool empty() const noexcept{
         return true;
@@ -15,6 +77,26 @@ public:
         return -1;
     }
 };
+
+template<typename ... _Types>
+struct __variant_accessor<-1,_Types...>{
+    static empty_t& get(variant<_Types...>& __v){
+        return static_cast<empty_t&>(__v);
+    }
+};
+
+template<typename _Type,typename ... _Types>
+_Type& get(variant<_Types...>& __v){
+    return get<__type_index<_Type,_Types...>::__value>(__v);
+}
+
+template<ptrdiff_t _Index,typename ... _Types>
+typename __indexed_type<_Index,_Types...>::__type& get(variant<_Types...>& __v){
+    if(_Index!=__v.index())
+        throw bad_variant_access("Bad variant index in get");
+    return __variant_accessor<_Index,_Types...>::get(__v);
+}
+
 }
 }
 
