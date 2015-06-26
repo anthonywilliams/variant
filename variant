@@ -209,7 +209,8 @@ public:
         __index(
             (__construct(std::forward<_Type>(__x)),
              __type_index<
-             typename std::remove_reference<_Type>::type,
+             typename std::remove_const<
+             typename std::remove_reference<_Type>::type>::type,
              _Types...>::__value))
     {}
     

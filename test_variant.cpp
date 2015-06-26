@@ -84,6 +84,16 @@ void construction_from_lvalue(){
     assert(vec2.size()==42);
 }
 
+void construction_from_const_lvalue(){
+    std::vector<int> const vec(42);
+    se::variant<std::vector<int>> v(vec);
+    assert(vec.size()==42);
+    assert(v.index()==0);
+    std::vector<int>& vec2=se::get<std::vector<int>>(v);
+    assert(&vec2!=&vec);
+    assert(vec2.size()==42);
+}
+
 int main(){
     initial_is_empty();
     empty_index_is_neg_one();
@@ -95,4 +105,5 @@ int main(){
     can_copy_variant();
     can_copy_const_variant();
     construction_from_lvalue();
+    construction_from_const_lvalue();
 }
