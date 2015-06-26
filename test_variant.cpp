@@ -562,6 +562,29 @@ void equality(){
     assert(v!=v2);
 }
 
+void less_than(){
+    se::variant<int,double,std::string> v(42);
+    se::variant<int,double,std::string> v2(4.2);
+    se::variant<int,double,std::string> v3(std::string("42"));
+
+    assert(!(v<v));
+    assert(v>=v);
+    assert(v<v2);
+    assert(v<v3);
+    assert(v2<v3);
+    se::variant<int,double,std::string> v4(v);
+    assert(!(v4<v));
+    assert(!(v<v4));
+    v4=std::move(v2);
+    assert(v2<v4);
+    assert(v2<v);
+    assert(v2<v3);
+    v2=99;
+    assert(v<v2);
+    assert(v2<v4);
+    assert(v2<v3);
+}
+
 int main(){
     initial_is_empty();
     empty_index_is_neg_one();
@@ -604,4 +627,5 @@ int main(){
     visit();
     reference_members();
     equality();
+    less_than();
 }
