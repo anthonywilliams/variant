@@ -153,7 +153,29 @@ template<ptrdiff_t _Index,typename ... _Types>
 struct __variant_constructor;
 
 template<typename ... _Types>
+struct __variant_ops{
+    typedef variant<_Types...> __variant_type;
+    typedef void(*__cc_func_type)(__variant_type*,__variant_type const&);
+
+    template<typename _Type>
+    static void __copy_construct_func(
+        __variant_type* __self,__variant_type const& __other){
+        __self->__construct(get<_Type>(__other));
+    }
+
+    static constexpr __cc_func_type __copy_construct[sizeof...(_Types)]={
+        &__copy_construct_func<_Types>...
+    };
+};
+
+template<typename ... _Types>
+constexpr typename __variant_ops<_Types...>::__cc_func_type
+__variant_ops<_Types...>::__copy_construct[sizeof...(_Types)];
+
+template<typename ... _Types>
 class variant: private empty_t{
+    friend struct __variant_ops<_Types...>;
+    
     template<ptrdiff_t _Index,typename ... _Types2>
     friend struct __variant_accessor;
     template<ptrdiff_t _Index,typename ... _Types2>
@@ -204,7 +226,7 @@ class variant: private empty_t{
         ptrdiff_t const __other_index=__other.index();
         if(__other_index==-1)
             return -1;
-        __variant_constructor<0,_Types...>::__copy_construct(this,__other);
+        __variant_ops<_Types...>::__copy_construct[__other_index](this,__other);
         return __other_index;
     }
     
@@ -344,18 +366,6 @@ struct __variant_constructor{
             __variant_constructor<
                 __next_index<_Index,_Types...>::__value,_Types...>::
                 __move_construct(__self,__other);
-        }
-    }
-    static constexpr void __copy_construct(
-        variant<_Types...>* __self,
-        variant<_Types...> const& __other){
-        if(_Index==__other.index()){
-            __self->__construct(get<_Index>(__other));
-        }
-        else{
-            __variant_constructor<
-                __next_index<_Index,_Types...>::__value,_Types...>::
-                __copy_construct(__self,__other);
         }
     }
     static constexpr void __copy_assign(
