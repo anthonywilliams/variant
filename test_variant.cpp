@@ -175,6 +175,7 @@ void copy_assignment_to_empty(){
 
     se::variant<CopyCounter> v2;
     v2=v;
+    assert(v.index()==0);
     assert(v2.index()==0);
     assert(se::get<CopyCounter>(v2).copy_construct==2);
     assert(se::get<CopyCounter>(v2).move_construct==0);
@@ -252,6 +253,72 @@ void throwing_copy_assign_leaves_target_empty(){
     assert(InstanceCounter::instances==0);
 }
 
+void move_assignment_to_empty(){
+    CopyCounter cc;
+    se::variant<CopyCounter> v(cc);
+    assert(v.index()==0);
+    assert(se::get<CopyCounter>(v).copy_construct==1);
+    assert(se::get<CopyCounter>(v).move_construct==0);
+    assert(se::get<CopyCounter>(v).copy_assign==0);
+    assert(se::get<CopyCounter>(v).move_assign==0);
+
+    se::variant<CopyCounter> v2;
+    v2=std::move(v);
+    assert(v.index()==-1);
+    assert(v2.index()==0);
+    assert(se::get<CopyCounter>(v2).copy_construct==1);
+    assert(se::get<CopyCounter>(v2).move_construct==1);
+    assert(se::get<CopyCounter>(v2).copy_assign==0);
+    assert(se::get<CopyCounter>(v2).move_assign==0);
+}
+
+void move_assignment_same_type(){
+    CopyCounter cc;
+    se::variant<CopyCounter> v(cc);
+    assert(v.index()==0);
+    assert(se::get<CopyCounter>(v).copy_construct==1);
+    assert(se::get<CopyCounter>(v).move_construct==0);
+    assert(se::get<CopyCounter>(v).copy_assign==0);
+    assert(se::get<CopyCounter>(v).move_assign==0);
+
+    se::variant<CopyCounter> v2(std::move(cc));
+    v2=std::move(v);
+    assert(v.index()==-1);
+    assert(v2.index()==0);
+    assert(se::get<CopyCounter>(v2).copy_construct==1);
+    assert(se::get<CopyCounter>(v2).move_construct==0);
+    assert(se::get<CopyCounter>(v2).copy_assign==0);
+    assert(se::get<CopyCounter>(v2).move_assign==1);
+}
+
+void move_assignment_of_diff_types_destroys_old(){
+    se::variant<InstanceCounter,CopyCounter> v;
+    assert(InstanceCounter::instances==0);
+    v=se::variant<InstanceCounter,CopyCounter>(InstanceCounter());
+    assert(v.index()==0);
+    assert(InstanceCounter::instances==1);
+    se::variant<InstanceCounter,CopyCounter> v2{CopyCounter()};
+    v=std::move(v2);
+    assert(v.index()==1);
+    assert(v2.index()==-1);
+    assert(InstanceCounter::instances==0);
+    assert(se::get<CopyCounter>(v).copy_construct==0);
+    assert(se::get<CopyCounter>(v).move_construct==2);
+    assert(se::get<CopyCounter>(v).copy_assign==0);
+    assert(se::get<CopyCounter>(v).move_assign==0);
+}
+
+void move_assignment_from_empty(){
+    se::variant<InstanceCounter,int> v=InstanceCounter();
+    assert(v.index()==0);
+    assert(InstanceCounter::instances==1);
+    se::variant<InstanceCounter,int> v2;
+    v=std::move(v2);
+    assert(v.index()==-1);
+    assert(v2.index()==-1);
+    assert(InstanceCounter::instances==0);
+}
+
 int main(){
     initial_is_empty();
     empty_index_is_neg_one();
@@ -270,4 +337,8 @@ int main(){
     copy_assignment_of_diff_types_destroys_old();
     copy_assignment_from_empty();
     throwing_copy_assign_leaves_target_empty();
+    move_assignment_to_empty();
+    move_assignment_same_type();
+    move_assignment_of_diff_types_destroys_old();
+    move_assignment_from_empty();
 }
