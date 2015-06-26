@@ -171,6 +171,14 @@ class variant: private empty_t{
         __variant_constructor<0,_Types...>::__destroy(&__other);
         return __other_index;
     }
+
+    ptrdiff_t __copy_construct(variant& __other){
+        ptrdiff_t const __other_index=__other.index();
+        if(__other_index==-1)
+            return -1;
+        __variant_constructor<0,_Types...>::__copy_construct(this,__other);
+        return __other_index;
+    }
     
 public:
     constexpr variant() noexcept:
@@ -181,6 +189,10 @@ public:
         __index(__move_construct(__other))
     {}
 
+    constexpr variant(variant& __other):
+        __index(__copy_construct(__other))
+    {}
+    
     template<typename _Type>
     constexpr variant(_Type&& __x):
         __index((__construct(__x),__type_index<_Type,_Types...>::__value))
@@ -200,14 +212,24 @@ struct __variant_constructor{
         variant<_Types...>* __self,
         variant<_Types...>& __other){
         if(_Index==__other.index()){
-            __self->template __construct<
-                typename __indexed_type<_Index,_Types...>::__type>(
-                std::move(get<_Index>(__other)));
+            __self->__construct(std::move(get<_Index>(__other)));
         }
         else{
             __variant_constructor<
                 __next_index<_Index,_Types...>::__value,_Types...>::
                 __move_construct(__self,__other);
+        }
+    }
+    static constexpr void __copy_construct(
+        variant<_Types...>* __self,
+        variant<_Types...>& __other){
+        if(_Index==__other.index()){
+            __self->__construct(get<_Index>(__other));
+        }
+        else{
+            __variant_constructor<
+                __next_index<_Index,_Types...>::__value,_Types...>::
+                __copy_construct(__self,__other);
         }
     }
     static constexpr void __destroy(
