@@ -493,6 +493,20 @@ void swap_different_types(){
     assert(se::get<CopyCounter>(v2).move_assign==0);
 }
 
+void assign_empty_to_empty(){
+    se::variant<int> v1,v2;
+    v1=v2;
+    assert(v1.index()==-1);
+    assert(v2.index()==-1);
+}
+
+void swap_empties(){
+    se::variant<int> v1,v2;
+    v1.swap(v2);
+    assert(v1.index()==-1);
+    assert(v2.index()==-1);
+}
+
 int main(){
     initial_is_empty();
     empty_index_is_neg_one();
@@ -530,4 +544,6 @@ int main(){
     emplace_by_index_of_diff_types_destroys_old();
     swap_same_type();
     swap_different_types();
+    assign_empty_to_empty();
+    swap_empties();
 }
