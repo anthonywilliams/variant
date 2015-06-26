@@ -349,6 +349,42 @@ void holds_alternative_for_non_empty_variant(){
     assert(!se::holds_alternative<se::empty_t>(v));
 }
 
+void assignment_from_value_to_empty(){
+    CopyCounter cc;
+    se::variant<int,CopyCounter> v;
+    v=cc;
+    assert(v.index()==1);
+    assert(se::get<CopyCounter>(v).copy_construct==1);
+    assert(se::get<CopyCounter>(v).move_construct==0);
+    assert(se::get<CopyCounter>(v).copy_assign==0);
+    assert(se::get<CopyCounter>(v).move_assign==0);
+}
+
+void assignment_from_value_to_same_type(){
+    CopyCounter cc;
+    se::variant<int,CopyCounter> v(cc);
+    v=cc;
+    assert(v.index()==1);
+    assert(se::get<CopyCounter>(v).copy_construct==0);
+    assert(se::get<CopyCounter>(v).move_construct==0);
+    assert(se::get<CopyCounter>(v).copy_assign==1);
+    assert(se::get<CopyCounter>(v).move_assign==0);
+}
+
+void assignment_from_value_of_diff_types_destroys_old(){
+    se::variant<InstanceCounter,CopyCounter> v{InstanceCounter()};
+    assert(v.index()==0);
+    assert(InstanceCounter::instances==1);
+    CopyCounter cc;
+    v=cc;
+    assert(v.index()==1);
+    assert(InstanceCounter::instances==0);
+    assert(se::get<CopyCounter>(v).copy_construct==1);
+    assert(se::get<CopyCounter>(v).move_construct==0);
+    assert(se::get<CopyCounter>(v).copy_assign==0);
+    assert(se::get<CopyCounter>(v).move_assign==0);
+}
+
 int main(){
     initial_is_empty();
     empty_index_is_neg_one();
@@ -375,4 +411,7 @@ int main(){
     emplace_construction_by_index();
     holds_alternative_for_empty_variant();
     holds_alternative_for_non_empty_variant();
+    assignment_from_value_to_empty();
+    assignment_from_value_to_same_type();
+    assignment_from_value_of_diff_types_destroys_old();
 }

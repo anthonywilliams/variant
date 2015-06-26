@@ -252,7 +252,34 @@ public:
              _Types...>::__value))
     {}
 
+    template<typename _Type>
+    variant& operator=(_Type&& __x){
+        constexpr ptrdiff_t _Index=__type_index<
+            typename std::remove_const<
+                typename std::remove_reference<_Type>::type>::type,
+            _Types...>::__value;
+        if(_Index==__index){
+            get<_Index>(*this)=std::forward<_Type>(__x);
+        }
+        else{
+            __destroy_self();
+            __construct(std::forward<_Type>(__x));
+            __index=_Index;
+        }
+        return *this;
+    }
+
     variant& operator=(variant const& __other){
+        if(__other.__index==__index){
+            __variant_constructor<0,_Types...>::__copy_assign(this,__other);
+        }
+        else{
+            __destroy_self();
+            __index=__copy_construct(__other);
+        }
+        return *this;
+    }
+    variant& operator=(variant& __other){
         if(__other.__index==__index){
             __variant_constructor<0,_Types...>::__copy_assign(this,__other);
         }
