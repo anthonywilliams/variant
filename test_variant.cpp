@@ -539,6 +539,7 @@ void reference_members(){
 
     assert(v.index()==0);
     assert(&se::get<int&>(v)==&i);
+    assert(&se::get<0>(v)==&i);
 }
 
 int main(){
