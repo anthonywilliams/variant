@@ -149,14 +149,12 @@ struct __max_align<_Head,_Rest...>{
         (__rest_max>alignof(_Head))?__rest_max:alignof(_Head);
 };
 
-template<ptrdiff_t _Index,typename ... _Types>
-struct __variant_constructor;
-
 template<typename ... _Types>
 struct __variant_ops{
     typedef variant<_Types...> __variant_type;
     typedef void(*__copy_func_type)(__variant_type*,__variant_type const&);
     typedef void(*__move_func_type)(__variant_type*,__variant_type&);
+    typedef void(*__unary_func_type)(__variant_type*);
 
     template<typename _Type>
     static void __copy_construct_func(
@@ -184,6 +182,11 @@ struct __variant_ops{
     }
 
     template<typename _Type>
+    static void __destroy_func(__variant_type* __self){
+        __self->template __destroy<_Type>();
+    }
+    
+    template<typename _Type>
     static void __swap_func(
         __variant_type* __self,__variant_type& __other){
         swap(get<_Type>(*__self),get<_Type>(__other));
@@ -204,7 +207,9 @@ struct __variant_ops{
     static constexpr __move_func_type __swap[sizeof...(_Types)]={
         &__swap_func<_Types>...
     };
-
+    static constexpr __unary_func_type __destroy[sizeof...(_Types)]={
+        &__destroy_func<_Types>...
+    };
 };
 
 template<typename ... _Types>
@@ -228,13 +233,15 @@ constexpr typename __variant_ops<_Types...>::__move_func_type
 __variant_ops<_Types...>::__swap[sizeof...(_Types)];
 
 template<typename ... _Types>
+constexpr typename __variant_ops<_Types...>::__unary_func_type
+__variant_ops<_Types...>::__destroy[sizeof...(_Types)];
+
+template<typename ... _Types>
 class variant: private empty_t{
     friend struct __variant_ops<_Types...>;
     
     template<ptrdiff_t _Index,typename ... _Types2>
     friend struct __variant_accessor;
-    template<ptrdiff_t _Index,typename ... _Types2>
-    friend struct __variant_constructor;
 
     typename std::aligned_storage<
         __max_size<_Types...>::__value,
@@ -259,7 +266,7 @@ class variant: private empty_t{
     void __destroy_self(){
         if(__index==-1)
             return;
-        __variant_constructor<0,_Types...>::__destroy(this);
+        __variant_ops<_Types...>::__destroy[__index](this);
     }
     
     template<typename _Type>
@@ -418,23 +425,6 @@ public:
         }
     }
 };
-
-template<ptrdiff_t _Index,typename ... _Types>
-struct __variant_constructor{
-    static constexpr void __destroy(
-        variant<_Types...>* __self){
-        if(_Index==__self->__index){
-            __self->template __destroy<
-                typename __indexed_type<_Index,_Types...>::__type>();
-        }
-        else{
-            __variant_constructor<
-                __next_index<_Index,_Types...>::__value,_Types...>::__destroy(
-                    __self);
-        }
-    }
-};
-
 
 template<typename ... _Types>
 struct __variant_accessor<-1,_Types...>{
