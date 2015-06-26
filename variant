@@ -72,6 +72,12 @@ struct __indexed_type<_Index,_Head,_Rest...>{
     typedef typename __indexed_type<_Index-1,_Rest...>::__type __type;
 };
 
+template<ptrdiff_t _Index,typename ..._Types>
+struct __next_index{
+    static constexpr ptrdiff_t __value=
+        (_Index>=ptrdiff_t(sizeof...(_Types)-1))?-1:_Index+1;
+};
+
 template<typename ... _Types>
 class variant;
 
@@ -129,10 +135,15 @@ struct __max_align<_Head,_Rest...>{
         (__rest_max>alignof(_Head))?__rest_max:alignof(_Head);
 };
 
+template<ptrdiff_t _Index,typename ... _Types>
+struct __variant_constructor;
+
 template<typename ... _Types>
 class variant: private empty_t{
     template<ptrdiff_t _Index,typename ... _Types2>
     friend struct __variant_accessor;
+    template<ptrdiff_t _Index,typename ... _Types2>
+    friend struct __variant_constructor;
 
     typename std::aligned_storage<
         __max_size<_Types...>::__value,
@@ -145,10 +156,29 @@ class variant: private empty_t{
             typename std::remove_reference<_Type>::type
             (std::forward<_Type>(__x));
     }
+
+    template<typename _Type>
+    void __destroy(){
+        __index=-1;
+        static_cast<_Type*>(static_cast<void*>(&__storage))->~_Type();
+    }
+
+    ptrdiff_t __move_construct(variant& __other){
+        ptrdiff_t const __other_index=__other.index();
+        if(__other_index==-1)
+            return -1;
+        __variant_constructor<0,_Types...>::__move_construct(this,__other);
+        __variant_constructor<0,_Types...>::__destroy(&__other);
+        return __other_index;
+    }
     
 public:
     constexpr variant() noexcept:
         __index(-1)
+    {}
+
+    constexpr variant(variant&& __other):
+        __index(__move_construct(__other))
     {}
 
     template<typename _Type>
@@ -164,9 +194,40 @@ public:
     }
 };
 
+template<ptrdiff_t _Index,typename ... _Types>
+struct __variant_constructor{
+    static constexpr void __move_construct(
+        variant<_Types...>* __self,
+        variant<_Types...>& __other){
+        if(_Index==__other.index()){
+            __self->template __construct<
+                typename __indexed_type<_Index,_Types...>::__type>(
+                std::move(get<_Index>(__other)));
+        }
+        else{
+            __variant_constructor<
+                __next_index<_Index,_Types...>::__value,_Types...>::
+                __move_construct(__self,__other);
+        }
+    }
+    static constexpr void __destroy(
+        variant<_Types...>* __self){
+        if(_Index==__self->__index){
+            __self->template __destroy<
+                typename __indexed_type<_Index,_Types...>::__type>();
+        }
+        else{
+            __variant_constructor<
+                __next_index<_Index,_Types...>::__value,_Types...>::__destroy(
+                    __self);
+        }
+    }
+};
+
+
 template<typename ... _Types>
 struct __variant_accessor<-1,_Types...>{
-    static empty_t& get(variant<_Types...>& __v){
+    static constexpr empty_t& get(variant<_Types...>& __v){
         return static_cast<empty_t&>(__v);
     }
 };
@@ -174,10 +235,10 @@ struct __variant_accessor<-1,_Types...>{
 template<ptrdiff_t _Index,typename ... _Types>
 struct __variant_accessor{
     typedef typename __indexed_type<_Index,_Types...>::__type __type;
-    static __type* get_ptr(variant<_Types...>& __v){
+    static constexpr __type* get_ptr(variant<_Types...>& __v){
         return static_cast<__type*>(static_cast<void*>(&__v.__storage));
     }
-    static __type& get(variant<_Types...>& __v){
+    static constexpr __type& get(variant<_Types...>& __v){
         return *get_ptr(__v);
     }
 };

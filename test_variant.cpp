@@ -40,6 +40,15 @@ void can_construct_second_type(){
     assert(s=="hello");
 }
 
+void can_move_variant(){
+    se::variant<int,std::string> v(std::string("hello"));
+    se::variant<int,std::string> v2(std::move(v));
+    assert(v2.index()==1);
+    assert(v.index()==-1);
+    std::string& s=se::get<std::string>(v2);
+    assert(s=="hello");
+}
+
 int main(){
     initial_is_empty();
     empty_index_is_neg_one();
@@ -47,4 +56,5 @@ int main(){
     can_construct_first_type();
     can_get_value_of_first_type();
     can_construct_second_type();
+    can_move_variant();
 }
