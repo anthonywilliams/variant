@@ -342,6 +342,13 @@ void holds_alternative_for_empty_variant(){
     assert(se::holds_alternative<se::empty_t>(v));
 }
 
+void holds_alternative_for_non_empty_variant(){
+    se::variant<int,double> v(2.3);
+    assert(!se::holds_alternative<int>(v));
+    assert(se::holds_alternative<double>(v));
+    assert(!se::holds_alternative<se::empty_t>(v));
+}
+
 int main(){
     initial_is_empty();
     empty_index_is_neg_one();
@@ -367,4 +374,5 @@ int main(){
     emplace_construction_by_type();
     emplace_construction_by_index();
     holds_alternative_for_empty_variant();
+    holds_alternative_for_non_empty_variant();
 }
