@@ -61,6 +61,18 @@ void can_copy_variant(){
     assert(&s!=&s2);
 }
 
+void can_copy_const_variant(){
+    se::variant<int,std::string> const v(std::string("hello"));
+    se::variant<int,std::string> v2(v);
+    assert(v2.index()==1);
+    assert(v.index()==1);
+    std::string const& s=se::get<std::string>(v);
+    assert(s=="hello");
+    std::string& s2=se::get<std::string>(v2);
+    assert(s2=="hello");
+    assert(&s!=&s2);
+}
+
 int main(){
     initial_is_empty();
     empty_index_is_neg_one();
@@ -70,4 +82,5 @@ int main(){
     can_construct_second_type();
     can_move_variant();
     can_copy_variant();
+    can_copy_const_variant();
 }

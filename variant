@@ -84,8 +84,15 @@ class variant;
 template<typename _Type,typename ... _Types>
 _Type& get(variant<_Types...>&);
 
+template<typename _Type,typename ... _Types>
+_Type const& get(variant<_Types...> const&);
+
 template<ptrdiff_t _Index,typename ... _Types>
 typename __indexed_type<_Index,_Types...>::__type& get(variant<_Types...>&);
+
+template<ptrdiff_t _Index,typename ... _Types>
+typename __indexed_type<_Index,_Types...>::__type const& get(
+    variant<_Types...> const&);
 
 template<ptrdiff_t _Index,typename ... _Types>
 struct __variant_accessor;
@@ -172,7 +179,7 @@ class variant: private empty_t{
         return __other_index;
     }
 
-    ptrdiff_t __copy_construct(variant& __other){
+    ptrdiff_t __copy_construct(variant const& __other){
         ptrdiff_t const __other_index=__other.index();
         if(__other_index==-1)
             return -1;
@@ -190,6 +197,10 @@ public:
     {}
 
     constexpr variant(variant& __other):
+        __index(__copy_construct(__other))
+    {}
+
+    constexpr variant(variant const& __other):
         __index(__copy_construct(__other))
     {}
     
@@ -222,7 +233,7 @@ struct __variant_constructor{
     }
     static constexpr void __copy_construct(
         variant<_Types...>* __self,
-        variant<_Types...>& __other){
+        variant<_Types...> const& __other){
         if(_Index==__other.index()){
             __self->__construct(get<_Index>(__other));
         }
@@ -252,6 +263,9 @@ struct __variant_accessor<-1,_Types...>{
     static constexpr empty_t& get(variant<_Types...>& __v){
         return static_cast<empty_t&>(__v);
     }
+    static constexpr empty_t const& get(variant<_Types...> const& __v){
+        return static_cast<empty_t const&>(__v);
+    }
 };
 
 template<ptrdiff_t _Index,typename ... _Types>
@@ -260,7 +274,13 @@ struct __variant_accessor{
     static constexpr __type* get_ptr(variant<_Types...>& __v){
         return static_cast<__type*>(static_cast<void*>(&__v.__storage));
     }
+    static constexpr __type const* get_ptr(variant<_Types...> const& __v){
+        return static_cast<__type const*>(static_cast<void const*>(&__v.__storage));
+    }
     static constexpr __type& get(variant<_Types...>& __v){
+        return *get_ptr(__v);
+    }
+    static constexpr __type const& get(variant<_Types...> const& __v){
         return *get_ptr(__v);
     }
 };
@@ -268,6 +288,19 @@ struct __variant_accessor{
 template<typename _Type,typename ... _Types>
 _Type& get(variant<_Types...>& __v){
     return get<__type_index<_Type,_Types...>::__value>(__v);
+}
+
+template<typename _Type,typename ... _Types>
+_Type const& get(variant<_Types...> const& __v){
+    return get<__type_index<_Type,_Types...>::__value>(__v);
+}
+
+template<ptrdiff_t _Index,typename ... _Types>
+typename __indexed_type<_Index,_Types...>::__type const& get(
+    variant<_Types...> const& __v){
+    if(_Index!=__v.index())
+        throw bad_variant_access("Bad variant index in get");
+    return __variant_accessor<_Index,_Types...>::get(__v);
 }
 
 template<ptrdiff_t _Index,typename ... _Types>
