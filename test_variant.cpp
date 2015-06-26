@@ -542,6 +542,26 @@ void reference_members(){
     assert(&se::get<0>(v)==&i);
 }
 
+void equality(){
+    se::variant<int,double,std::string> v(42);
+    se::variant<int,double,std::string> v2(4.2);
+    se::variant<int,double,std::string> v3(std::string("42"));
+
+    assert(v==v);
+    assert(v!=v2);
+    assert(v!=v3);
+    assert(v2==v2);
+    assert(v3==v3);
+    se::variant<int,double,std::string> v4(v);
+    assert(v==v4);
+    v4=std::move(v2);
+    assert(v4!=v2);
+    assert(v2==v2);
+    assert(v!=v2);
+    v2=3;
+    assert(v!=v2);
+}
+
 int main(){
     initial_is_empty();
     empty_index_is_neg_one();
@@ -583,4 +603,5 @@ int main(){
     swap_empties();
     visit();
     reference_members();
+    equality();
 }

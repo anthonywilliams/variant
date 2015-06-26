@@ -238,6 +238,7 @@ struct __variant_ops{
     typedef void(*__copy_func_type)(__variant_type*,__variant_type const&);
     typedef void(*__move_func_type)(__variant_type*,__variant_type&);
     typedef void(*__unary_func_type)(__variant_type*);
+    typedef bool(*__compare_func_type)(__variant_type const&,__variant_type const&);
 
     template<typename _Type>
     static void __copy_construct_func(
@@ -278,6 +279,12 @@ struct __variant_ops{
         __variant_type* __self,__variant_type& __other){
         swap(get<_Type>(*__self),get<_Type>(__other));
     }
+
+    template<typename _Type>
+    static bool __equality_compare_func(
+        __variant_type const& __lhs,__variant_type const& __rhs){
+        return get<_Type>(__lhs)==get<_Type>(__rhs);
+    }
     
     static constexpr __copy_func_type __copy_construct[sizeof...(_Types)]={
         &__copy_construct_func<_Types>...
@@ -296,6 +303,9 @@ struct __variant_ops{
     };
     static constexpr __unary_func_type __destroy[sizeof...(_Types)]={
         &__destroy_func<_Types>...
+    };
+    static constexpr __compare_func_type __equality_compare[sizeof...(_Types)]={
+        &__equality_compare_func<_Types>...
     };
 };
 
@@ -322,6 +332,10 @@ __variant_ops<_Types...>::__swap[sizeof...(_Types)];
 template<typename ... _Types>
 constexpr typename __variant_ops<_Types...>::__unary_func_type
 __variant_ops<_Types...>::__destroy[sizeof...(_Types)];
+
+template<typename ... _Types>
+constexpr typename __variant_ops<_Types...>::__compare_func_type
+__variant_ops<_Types...>::__equality_compare[sizeof...(_Types)];
 
 template<typename ... _Types>
 class variant: private empty_t{
@@ -571,6 +585,18 @@ void visit(_Visitor& __visitor,variant<_Types...>& __v){
     if(__v.empty())
         return;
     __visitor_table<_Visitor,_Types...>::__trampoline[__v.index()](__visitor,__v);
+}
+
+template<typename ... _Types>
+bool operator==(variant<_Types...> const& __lhs,variant<_Types...> const& __rhs){
+    return (__lhs.index()==__rhs.index()) &&
+        ((__lhs.index()==-1) ||
+         __variant_ops<_Types...>::__equality_compare[__lhs.index()](__lhs,__rhs));
+}
+
+template<typename ... _Types>
+bool operator!=(variant<_Types...> const& __lhs,variant<_Types...> const& __rhs){
+    return !(__lhs==__rhs);
 }
 
 }
