@@ -225,12 +225,12 @@ public:
     {}
 
     template<typename _Type,typename ... _Args>
-    constexpr variant(emplaced_type_t<_Type>,_Args&& ... __args):
+    explicit constexpr variant(emplaced_type_t<_Type>,_Args&& ... __args):
         __index(__emplace_construct<_Type>(std::forward<_Args>(__args)...))
     {}
 
     template<ptrdiff_t _Index,typename ... _Args>
-    constexpr variant(emplaced_index_t<_Index>,_Args&& ... __args):
+    explicit constexpr variant(emplaced_index_t<_Index>,_Args&& ... __args):
         __index(
             (__emplace_construct<
              typename __indexed_type<_Index,_Types...>::__type>(
