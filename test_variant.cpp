@@ -2,6 +2,7 @@
 #include <assert.h>
 #include <string>
 #include <vector>
+#include <memory>
 
 namespace se=std::experimental;
 
@@ -94,6 +95,22 @@ void construction_from_const_lvalue(){
     assert(vec2.size()==42);
 }
 
+void move_construction_with_move_only_types(){
+    std::unique_ptr<int> ui(new int(42));
+    se::variant<std::unique_ptr<int>> v(std::move(ui));
+    assert(v.index()==0);
+    std::unique_ptr<int>& p2=se::get<std::unique_ptr<int>>(v);
+    assert(p2);
+    assert(*p2==42);
+    
+    se::variant<std::unique_ptr<int>> v2(std::move(v));
+    assert(v.index()==-1);
+    assert(v2.index()==0);
+    std::unique_ptr<int>& p3=se::get<std::unique_ptr<int>>(v2);
+    assert(p3);
+    assert(*p3==42);
+}
+
 int main(){
     initial_is_empty();
     empty_index_is_neg_one();
@@ -106,4 +123,5 @@ int main(){
     can_copy_const_variant();
     construction_from_lvalue();
     construction_from_const_lvalue();
+    move_construction_with_move_only_types();
 }
