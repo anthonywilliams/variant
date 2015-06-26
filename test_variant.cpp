@@ -182,6 +182,37 @@ void copy_assignment_to_empty(){
     assert(se::get<CopyCounter>(v2).move_assign==0);
 }
 
+struct InstanceCounter{
+    static unsigned instances;
+
+    InstanceCounter(){
+        ++instances;
+    }
+    InstanceCounter(InstanceCounter const& rhs){
+        ++instances;
+    }
+    ~InstanceCounter(){
+        --instances;
+    }
+};
+
+unsigned InstanceCounter::instances=0;
+    
+void copy_assignment_of_diff_types_destroys_old(){
+    se::variant<InstanceCounter,int> v;
+    assert(InstanceCounter::instances==0);
+    v=se::variant<InstanceCounter,int>(InstanceCounter());
+    assert(v.index()==0);
+    assert(InstanceCounter::instances==1);
+    se::variant<InstanceCounter,int> v2(42);
+    v=v2;
+    assert(v.index()==1);
+    assert(v2.index()==1);
+    assert(se::get<int>(v2)==42);
+    assert(se::get<int>(v)==42);
+    assert(InstanceCounter::instances==0);
+}
+
 int main(){
     initial_is_empty();
     empty_index_is_neg_one();
@@ -197,4 +228,5 @@ int main(){
     move_construction_with_move_only_types();
     copy_assignment_same_type();
     copy_assignment_to_empty();
+    copy_assignment_of_diff_types_destroys_old();
 }

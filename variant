@@ -209,6 +209,10 @@ public:
     constexpr variant(variant const& __other):
         __index(__copy_construct(__other))
     {}
+
+    ~variant(){
+        __destroy_self();
+    }
     
     template<typename _Type>
     constexpr variant(_Type&& __x):
