@@ -213,6 +213,17 @@ void copy_assignment_of_diff_types_destroys_old(){
     assert(InstanceCounter::instances==0);
 }
 
+void copy_assignment_from_empty(){
+    se::variant<InstanceCounter,int> v=InstanceCounter();
+    assert(v.index()==0);
+    assert(InstanceCounter::instances==1);
+    se::variant<InstanceCounter,int> v2;
+    v=v2;
+    assert(v.index()==-1);
+    assert(v2.index()==-1);
+    assert(InstanceCounter::instances==0);
+}
+
 int main(){
     initial_is_empty();
     empty_index_is_neg_one();
@@ -229,4 +240,5 @@ int main(){
     copy_assignment_same_type();
     copy_assignment_to_empty();
     copy_assignment_of_diff_types_destroys_old();
+    copy_assignment_from_empty();
 }
