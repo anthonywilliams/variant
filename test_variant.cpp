@@ -1,6 +1,7 @@
 #include "variant"
 #include <assert.h>
 #include <string>
+#include <vector>
 
 namespace se=std::experimental;
 
@@ -73,6 +74,16 @@ void can_copy_const_variant(){
     assert(&s!=&s2);
 }
 
+void construction_from_lvalue(){
+    std::vector<int> vec(42);
+    se::variant<std::vector<int>> v(vec);
+    assert(vec.size()==42);
+    assert(v.index()==0);
+    std::vector<int>& vec2=se::get<std::vector<int>>(v);
+    assert(&vec2!=&vec);
+    assert(vec2.size()==42);
+}
+
 int main(){
     initial_is_empty();
     empty_index_is_neg_one();
@@ -83,4 +94,5 @@ int main(){
     can_move_variant();
     can_copy_variant();
     can_copy_const_variant();
+    construction_from_lvalue();
 }

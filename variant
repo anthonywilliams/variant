@@ -206,7 +206,11 @@ public:
     
     template<typename _Type>
     constexpr variant(_Type&& __x):
-        __index((__construct(__x),__type_index<_Type,_Types...>::__value))
+        __index(
+            (__construct(std::forward<_Type>(__x)),
+             __type_index<
+             typename std::remove_reference<_Type>::type,
+             _Types...>::__value))
     {}
     
     constexpr bool empty() const noexcept{
