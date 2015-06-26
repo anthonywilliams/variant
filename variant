@@ -22,10 +22,13 @@ public:
     {}
 };
 
+template<ptrdiff_t _Offset,typename _Type,typename ... _Types>
+struct __type_index_helper;
+
 template<ptrdiff_t _Offset,typename _Type,typename _Head,typename ... _Rest>
-struct __type_index_helper{
+struct __type_index_helper<_Offset,_Type,_Head,_Rest...>{
     static constexpr ptrdiff_t __value=
-        __type_index_helper<_Offset+1,_Head,_Rest...>::__value;
+        __type_index_helper<_Offset+1,_Type,_Rest...>::__value;
 };
 
 template<ptrdiff_t _Offset,typename _Type,typename ... _Rest>

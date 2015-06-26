@@ -1,5 +1,6 @@
 #include "variant"
 #include <assert.h>
+#include <string>
 
 namespace se=std::experimental;
 
@@ -32,10 +33,18 @@ void can_get_value_of_first_type(){
     assert(i==42);
 }
 
+void can_construct_second_type(){
+    se::variant<int,std::string> v(std::string("hello"));
+    assert(v.index()==1);
+    std::string& s=se::get<std::string>(v);
+    assert(s=="hello");
+}
+
 int main(){
     initial_is_empty();
     empty_index_is_neg_one();
     get_empty_t_works_for_empty();
     can_construct_first_type();
     can_get_value_of_first_type();
+    can_construct_second_type();
 }
