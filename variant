@@ -1,14 +1,18 @@
 // -*- C++ -*-
 #ifndef _JSS_EXPERIMENTAL_VARIANT_HEADER
 #define _JSS_EXPERIMENTAL_VARIANT_HEADER
+#include <stddef.h>
 
 namespace std{
 namespace experimental{
 template<typename ... _Types>
 class variant{
 public:
-    constexpr bool empty() noexcept{
+    constexpr bool empty() const noexcept{
         return true;
+    }
+    constexpr ptrdiff_t index() const noexcept{
+        return -1;
     }
 };
 }
