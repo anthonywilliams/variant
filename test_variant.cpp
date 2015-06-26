@@ -507,6 +507,32 @@ void swap_empties(){
     assert(v2.index()==-1);
 }
 
+struct VisitorIS{
+    int& i;
+    std::string& s;
+
+    void operator()(int arg){
+        i=arg;
+    }
+    void operator()(std::string const& arg){
+        s=arg;
+    }
+};
+
+void visit(){
+    se::variant<int,std::string> v(42);
+
+    int i=0;
+    std::string s;
+    VisitorIS visitor{i,s};
+    se::visit(visitor,v);
+    assert(i==42);
+    i=0;
+    v=std::string("hello");
+    se::visit(visitor,v);
+    assert(s=="hello");
+}
+
 int main(){
     initial_is_empty();
     empty_index_is_neg_one();
@@ -546,4 +572,5 @@ int main(){
     swap_different_types();
     assign_empty_to_empty();
     swap_empties();
+    visit();
 }

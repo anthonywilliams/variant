@@ -316,7 +316,7 @@ public:
     }
     
     constexpr bool empty() const noexcept{
-        return true;
+        return __index==-1;
     }
     constexpr ptrdiff_t index() const noexcept{
         return __index;
@@ -465,6 +465,31 @@ typename __indexed_type<_Index,_Types...>::__type& get(variant<_Types...>& __v){
 template<typename _Type,typename ... _Types>
 constexpr bool holds_alternative(variant<_Types...> const& __v) noexcept{
     return __v.index()==__type_index<_Type,_Types...>::__value;
+}
+
+template<typename _Visitor,typename ... _Types>
+struct __visitor_table{
+    typedef variant<_Types...> __variant_type;
+    typedef void(*__func_type)(_Visitor&,__variant_type&);
+
+    template<typename _Type>
+    static void __trampoline_func(_Visitor& __visitor,__variant_type& __v){
+        __visitor(get<_Type>(__v));
+    }
+
+    static constexpr __func_type __trampoline[sizeof...(_Types)]={
+        &__trampoline_func<_Types>...
+    };
+};
+
+template<typename _Visitor,typename ... _Types>
+constexpr typename __visitor_table<_Visitor,_Types...>::__func_type __visitor_table<_Visitor,_Types...>::__trampoline[sizeof...(_Types)];
+
+template<typename _Visitor,typename ... _Types>
+void visit(_Visitor& __visitor,variant<_Types...>& __v){
+    if(__v.empty())
+        return;
+    __visitor_table<_Visitor,_Types...>::__trampoline[__v.index()](__visitor,__v);
 }
 
 }
