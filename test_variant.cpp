@@ -26,10 +26,16 @@ void can_construct_first_type(){
     assert(v.index()==0);
 }
 
+void can_get_value_of_first_type(){
+    se::variant<int> v(42);
+    int& i=se::get<int>(v);
+    assert(i==42);
+}
+
 int main(){
     initial_is_empty();
     empty_index_is_neg_one();
     get_empty_t_works_for_empty();
     can_construct_first_type();
-    
+    can_get_value_of_first_type();
 }

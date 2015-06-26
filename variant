@@ -4,6 +4,8 @@
 #include <stddef.h>
 #include <stdexcept>
 #include <string>
+#include <type_traits>
+#include <new>
 
 namespace std{
 namespace experimental{
@@ -85,11 +87,61 @@ struct __descriminator_type{
 };
 
 template<typename ... _Types>
+struct __max_size;
+
+template<>
+struct __max_size<>{
+    static constexpr size_t __value=0;
+};
+
+template<typename _Type>
+struct __max_size<_Type>{
+    static constexpr size_t __value=sizeof(_Type);
+};
+
+template<typename _Head,typename ... _Rest>
+struct __max_size<_Head,_Rest...>{
+    static constexpr size_t __rest_max=__max_size<_Rest...>::__value;
+    static constexpr size_t __value=
+        (__rest_max>sizeof(_Head))?__rest_max:sizeof(_Head);
+};
+
+template<typename ... _Types>
+struct __max_align;
+
+template<>
+struct __max_align<>{
+    static constexpr size_t __value=0;
+};
+
+template<typename _Type>
+struct __max_align<_Type>{
+    static constexpr size_t __value=alignof(_Type);
+};
+
+template<typename _Head,typename ... _Rest>
+struct __max_align<_Head,_Rest...>{
+    static constexpr size_t __rest_max=__max_align<_Rest...>::__value;
+    static constexpr size_t __value=
+        (__rest_max>alignof(_Head))?__rest_max:alignof(_Head);
+};
+
+template<typename ... _Types>
 class variant: private empty_t{
     template<ptrdiff_t _Index,typename ... _Types2>
     friend struct __variant_accessor;
 
+    typename std::aligned_storage<
+        __max_size<_Types...>::__value,
+        __max_align<_Types...>::__value>::type __storage;
     typename __descriminator_type<sizeof ... (_Types)>::__type __index;
+
+    template<typename _Type>
+    void __construct(_Type&& __x){
+        new (static_cast<void*>(&__storage))
+            typename std::remove_reference<_Type>::type
+            (std::forward<_Type>(__x));
+    }
     
 public:
     constexpr variant() noexcept:
@@ -98,7 +150,7 @@ public:
 
     template<typename _Type>
     constexpr variant(_Type&& __x):
-        __index(__type_index<_Type,_Types...>::__value)
+        __index((__construct(__x),__type_index<_Type,_Types...>::__value))
     {}
     
     constexpr bool empty() const noexcept{
@@ -113,6 +165,17 @@ template<typename ... _Types>
 struct __variant_accessor<-1,_Types...>{
     static empty_t& get(variant<_Types...>& __v){
         return static_cast<empty_t&>(__v);
+    }
+};
+
+template<ptrdiff_t _Index,typename ... _Types>
+struct __variant_accessor{
+    typedef typename __indexed_type<_Index,_Types...>::__type __type;
+    static __type* get_ptr(variant<_Types...>& __v){
+        return static_cast<__type*>(static_cast<void*>(&__v.__storage));
+    }
+    static __type& get(variant<_Types...>& __v){
+        return *get_ptr(__v);
     }
 };
 
