@@ -399,6 +399,11 @@ typename __indexed_type<_Index,_Types...>::__type& get(variant<_Types...>& __v){
     return __variant_accessor<_Index,_Types...>::get(__v);
 }
 
+template<typename _Type,typename ... _Types>
+constexpr bool holds_alternative(variant<_Types...> const& __v) noexcept{
+    return __v.index()==__type_index<_Type,_Types...>::__value;
+}
+
 }
 }
 

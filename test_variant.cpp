@@ -335,6 +335,13 @@ void emplace_construction_by_index(){
     assert(se::get<2>(v)==msg);
 }
 
+void holds_alternative_for_empty_variant(){
+    se::variant<int,double> v;
+    assert(!se::holds_alternative<int>(v));
+    assert(!se::holds_alternative<double>(v));
+    assert(se::holds_alternative<se::empty_t>(v));
+}
+
 int main(){
     initial_is_empty();
     empty_index_is_neg_one();
@@ -359,4 +366,5 @@ int main(){
     move_assignment_from_empty();
     emplace_construction_by_type();
     emplace_construction_by_index();
+    holds_alternative_for_empty_variant();
 }
