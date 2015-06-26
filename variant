@@ -164,6 +164,12 @@ class variant: private empty_t{
             (std::forward<_Type>(__x));
     }
 
+    void __destroy_self(){
+        if(__index==-1)
+            return;
+        __variant_constructor<0,_Types...>::__destroy(this);
+    }
+    
     template<typename _Type>
     void __destroy(){
         __index=-1;
@@ -175,7 +181,7 @@ class variant: private empty_t{
         if(__other_index==-1)
             return -1;
         __variant_constructor<0,_Types...>::__move_construct(this,__other);
-        __variant_constructor<0,_Types...>::__destroy(&__other);
+        __other.__destroy_self();
         return __other_index;
     }
 
@@ -213,6 +219,17 @@ public:
              typename std::remove_reference<_Type>::type>::type,
              _Types...>::__value))
     {}
+
+    variant& operator=(variant const& __other){
+        if(__other.__index==__index){
+            __variant_constructor<0,_Types...>::__copy_assign(this,__other);
+        }
+        else{
+            __destroy_self();
+            __index=__copy_construct(__other);
+        }
+        return *this;
+    }
     
     constexpr bool empty() const noexcept{
         return true;
@@ -246,6 +263,18 @@ struct __variant_constructor{
             __variant_constructor<
                 __next_index<_Index,_Types...>::__value,_Types...>::
                 __copy_construct(__self,__other);
+        }
+    }
+    static constexpr void __copy_assign(
+        variant<_Types...>* __self,
+        variant<_Types...> const& __other){
+        if(_Index==__other.index()){
+            get<_Index>(*__self)=get<_Index>(__other);
+        }
+        else{
+            __variant_constructor<
+                __next_index<_Index,_Types...>::__value,_Types...>::
+                __copy_assign(__self,__other);
         }
     }
     static constexpr void __destroy(

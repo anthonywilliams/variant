@@ -111,6 +111,77 @@ void move_construction_with_move_only_types(){
     assert(*p3==42);
 }
 
+struct CopyCounter{
+    unsigned move_construct=0;
+    unsigned copy_construct=0;
+    unsigned move_assign=0;
+    unsigned copy_assign=0;
+
+    CopyCounter(){}
+    CopyCounter(const CopyCounter& rhs):
+        move_construct(rhs.move_construct),
+        copy_construct(rhs.copy_construct+1),
+        move_assign(rhs.move_assign),
+        copy_assign(rhs.copy_assign)
+    {}
+    CopyCounter(CopyCounter&& rhs):
+        move_construct(rhs.move_construct+1),
+        copy_construct(rhs.copy_construct),
+        move_assign(rhs.move_assign),
+        copy_assign(rhs.copy_assign)
+    {}
+    CopyCounter& operator=(const CopyCounter& rhs){
+        move_construct=rhs.move_construct;
+        copy_construct=rhs.copy_construct;
+        move_assign=rhs.move_assign;
+        copy_assign=rhs.copy_assign+1;
+        return *this;
+    }
+    CopyCounter& operator=(CopyCounter&& rhs){
+        move_construct=rhs.move_construct;
+        copy_construct=rhs.copy_construct;
+        move_assign=rhs.move_assign+1;
+        copy_assign=rhs.copy_assign;
+        return *this;
+    }
+};
+
+void copy_assignment_same_type(){
+    CopyCounter cc;
+    se::variant<CopyCounter> v(cc);
+    assert(v.index()==0);
+    assert(se::get<CopyCounter>(v).copy_construct==1);
+    assert(se::get<CopyCounter>(v).move_construct==0);
+    assert(se::get<CopyCounter>(v).copy_assign==0);
+    assert(se::get<CopyCounter>(v).move_assign==0);
+
+    se::variant<CopyCounter> v2(cc);
+    v2=v;
+    assert(v2.index()==0);
+    assert(se::get<CopyCounter>(v2).copy_construct==1);
+    assert(se::get<CopyCounter>(v2).move_construct==0);
+    assert(se::get<CopyCounter>(v2).copy_assign==1);
+    assert(se::get<CopyCounter>(v2).move_assign==0);
+}
+
+void copy_assignment_to_empty(){
+    CopyCounter cc;
+    se::variant<CopyCounter> v(cc);
+    assert(v.index()==0);
+    assert(se::get<CopyCounter>(v).copy_construct==1);
+    assert(se::get<CopyCounter>(v).move_construct==0);
+    assert(se::get<CopyCounter>(v).copy_assign==0);
+    assert(se::get<CopyCounter>(v).move_assign==0);
+
+    se::variant<CopyCounter> v2;
+    v2=v;
+    assert(v2.index()==0);
+    assert(se::get<CopyCounter>(v2).copy_construct==2);
+    assert(se::get<CopyCounter>(v2).move_construct==0);
+    assert(se::get<CopyCounter>(v2).copy_assign==0);
+    assert(se::get<CopyCounter>(v2).move_assign==0);
+}
+
 int main(){
     initial_is_empty();
     empty_index_is_neg_one();
@@ -124,4 +195,6 @@ int main(){
     construction_from_lvalue();
     construction_from_const_lvalue();
     move_construction_with_move_only_types();
+    copy_assignment_same_type();
+    copy_assignment_to_empty();
 }
