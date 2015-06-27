@@ -241,6 +241,115 @@ struct __all_trivially_destructible<_Type> {
         std::is_trivially_destructible<typename __stored_type<_Type>::__type>::value;
 };
 
+template<typename ... _Types>
+union __variant_data;
+
+template<typename _Type,bool=std::is_literal_type<_Type>::value>
+struct __variant_storage{
+    typedef _Type __type;
+
+    static constexpr _Type& __get(__type& __val){
+        return __val;
+    }
+    static constexpr const _Type& __get(__type const& __val){
+        return __val;
+    }
+};
+
+struct __dummy_base{
+    template<typename _Type>
+    constexpr __dummy_base(_Type){}
+};
+
+template<typename _Type>
+struct __storage_wrapper:__dummy_base{
+    typename std::aligned_storage<sizeof(_Type),alignof(_Type)>::type __storage;
+
+    template<typename ... _Args>
+    static constexpr empty_t __construct(void* __p,_Args&& ... __args){
+        return new (__p) _Type(std::forward<_Args>(__args)...),empty_t();
+    }
+
+    template<typename ... _Args>
+    constexpr __storage_wrapper(_Args&& ... __args):
+        __dummy_base(__construct(&__storage,std::forward<_Args>(__args)...)){}
+
+    _Type& __get(){
+        return *static_cast<_Type*>(static_cast<void*>(&__storage));
+    }
+    constexpr _Type const& __get() const{
+        return *static_cast<_Type const*>(static_cast<void const*>(&__storage));
+    }
+};
+
+template<typename _Type>
+struct __variant_storage<_Type,false>{
+    typedef __storage_wrapper<_Type> __type;
+
+    static constexpr _Type& __get(__type& __val){
+        return __val.__get();
+    }
+    static constexpr const _Type& __get(__type const& __val){
+        return __val.__get();
+    }
+};
+
+template<typename _Type>
+union __variant_data<_Type>{
+    empty_t __dummy;
+    typename __variant_storage<_Type>::__type __val;
+
+    constexpr __variant_data():
+        __dummy(){}
+    
+    template<typename ... _Args>
+    constexpr __variant_data(emplaced_index_t<0>,_Args&& ... __args):
+        __val(std::forward<_Args>(__args)...){}
+
+    _Type& __get(emplaced_index_t<0>){
+        return __variant_storage<_Type>::__get(__val);
+    }
+    constexpr const _Type& __get(emplaced_index_t<0>) const{
+        return __variant_storage<_Type>::__get(__val);
+    }
+};
+
+template<typename _Head,typename ... _Rest>
+union __variant_data<_Head,_Rest...>{
+    __variant_data<_Head> __head;
+    __variant_data<_Rest...> __rest;
+
+    constexpr __variant_data():
+        __head(){}
+    
+    template<typename ... _Args>
+    constexpr __variant_data(emplaced_index_t<0>,_Args&& ... __args):
+        __head(emplaced_index_t<0>(),std::forward<_Args>(__args)...){}
+    template<ptrdiff_t _Index,typename ... _Args>
+    constexpr __variant_data(emplaced_index_t<_Index>,_Args&& ... __args):
+        __rest(emplaced_index_t<_Index-1>(),std::forward<_Args>(__args)...){}
+
+    _Head& __get(emplaced_index_t<0>){
+        return __head.__get(emplaced_index_t<0>());
+    }
+
+    constexpr const _Head& __get(emplaced_index_t<0>) const{
+        return __head.__get(emplaced_index_t<0>());
+    }
+
+    template<ptrdiff_t _Index>
+    typename __indexed_type<_Index-1,_Rest...>::__type& __get(
+        emplaced_index_t<_Index>){
+        return __rest.__get(emplaced_index_t<_Index-1>());
+    }
+    template<ptrdiff_t _Index>
+    constexpr const typename __indexed_type<_Index-1,_Rest...>::__type& __get(
+        emplaced_index_t<_Index>) const{
+        return __rest.__get(emplaced_index_t<_Index-1>());
+    }
+};
+
+
 template<typename _Head,typename ... _Rest>
 struct __all_trivially_destructible<_Head,_Rest...> {
     static constexpr bool __value=
@@ -387,9 +496,7 @@ class variant: private __variant_base<variant<_Types...>,__all_trivially_destruc
     template<ptrdiff_t _Index,typename ... _Types2>
     friend struct __variant_accessor;
 
-    typename std::aligned_storage<
-        __max_size<_Types...>::__value,
-        __max_align<_Types...>::__value>::type __storage;
+    __variant_data<_Types...> __storage;
     typename __descriminator_type<sizeof ... (_Types)>::__type __index;
 
     template<typename _Type,typename ... _Args>
@@ -443,7 +550,10 @@ public:
 
     template<typename _Type,typename ... _Args>
     explicit constexpr variant(emplaced_type_t<_Type>,_Args&& ... __args):
-        __index(__emplace_construct<_Type>(std::forward<_Args>(__args)...))
+        __storage(
+            emplaced_index_t<__type_index<_Type,_Types...>::__value>(),
+            std::forward<_Args>(__args)...),
+        __index(__type_index<_Type,_Types...>::__value)
     {}
 
     template<ptrdiff_t _Index,typename ... _Args>
