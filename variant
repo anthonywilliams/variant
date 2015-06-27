@@ -233,6 +233,22 @@ struct __max_align<_Head,_Rest...>{
 };
 
 template<typename ... _Types>
+struct __all_trivially_destructible;
+
+template<typename _Type>
+struct __all_trivially_destructible<_Type> {
+    static constexpr bool __value=
+        std::is_trivially_destructible<typename __stored_type<_Type>::__type>::value;
+};
+
+template<typename _Head,typename ... _Rest>
+struct __all_trivially_destructible<_Head,_Rest...> {
+    static constexpr bool __value=
+        __all_trivially_destructible<_Head>::__value &&
+        __all_trivially_destructible<_Rest...>::__value;
+};
+
+template<typename ... _Types>
 struct __variant_ops{
     typedef variant<_Types...> __variant_type;
     typedef void(*__copy_func_type)(__variant_type*,__variant_type const&);
@@ -350,8 +366,22 @@ template<typename ... _Types>
 constexpr typename __variant_ops<_Types...>::__compare_func_type
 __variant_ops<_Types...>::__less_than_compare[sizeof...(_Types)];
 
+template<typename _Derived,bool __trivial_destructor>
+struct __variant_base: empty_t
+{
+    ~__variant_base(){
+        static_cast<_Derived*>(this)->__destroy_self();
+    }
+};
+
+template<typename _Derived>
+struct __variant_base<_Derived,true>:empty_t{
+};
+
 template<typename ... _Types>
-class variant: private empty_t{
+class variant: private __variant_base<variant<_Types...>,__all_trivially_destructible<_Types...>::__value>{
+    typedef __variant_base<variant<_Types...>,__all_trivially_destructible<_Types...>::__value> __base_type;
+    friend __base_type;
     friend struct __variant_ops<_Types...>;
     
     template<ptrdiff_t _Index,typename ... _Types2>
@@ -424,10 +454,6 @@ public:
                  std::forward<_Args>(__args)...),
              _Index))
     {}
-    
-    ~variant(){
-        __destroy_self();
-    }
     
     template<typename _Type>
     constexpr variant(_Type&& __x):
