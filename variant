@@ -187,52 +187,6 @@ struct __stored_type<_Type&>{
 };
 
 template<typename ... _Types>
-struct __max_size;
-
-template<>
-struct __max_size<>{
-    static constexpr size_t __value=0;
-};
-
-template<typename _Type>
-struct __max_size<_Type>{
-    static constexpr size_t __value=
-        sizeof(typename __stored_type<_Type>::__type);
-};
-
-template<typename _Head,typename ... _Rest>
-struct __max_size<_Head,_Rest...>{
-    static constexpr size_t __this_size=
-        sizeof(typename __stored_type<_Head>::__type);
-    static constexpr size_t __rest_max=__max_size<_Rest...>::__value;
-    static constexpr size_t __value=
-        (__rest_max>__this_size)?__rest_max:__this_size;
-};
-
-template<typename ... _Types>
-struct __max_align;
-
-template<>
-struct __max_align<>{
-    static constexpr size_t __value=0;
-};
-
-template<typename _Type>
-struct __max_align<_Type>{
-    static constexpr size_t __value=
-        alignof(typename __stored_type<_Type>::__type);
-};
-
-template<typename _Head,typename ... _Rest>
-struct __max_align<_Head,_Rest...>{
-    static constexpr size_t __this_align=
-        alignof(typename __stored_type<_Head>::__type);
-    static constexpr size_t __rest_max=__max_align<_Rest...>::__value;
-    static constexpr size_t __value=
-        (__rest_max>__this_align)?__rest_max:__this_align;
-};
-
-template<typename ... _Types>
 struct __all_trivially_destructible;
 
 template<typename _Type>
