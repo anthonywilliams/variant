@@ -727,7 +727,7 @@ constexpr typename __visitor_table<_Visitor,_Types...>::__func_type __visitor_ta
 template<typename _Visitor,typename ... _Types>
 void visit(_Visitor& __visitor,variant<_Types...>& __v){
     if(__v.empty())
-        return;
+        throw bad_variant_access("Visiting of empty variant");
     __visitor_table<_Visitor,_Types...>::__trampoline[__v.index()](__visitor,__v);
 }
 
@@ -791,8 +791,7 @@ template<size_t _VariantIndex,ptrdiff_t ... _Indices>
 struct __visit_helper2<-1,_VariantIndex,_Indices...>{
     template<typename _Visitor,typename ... _Variants>
     static void __visit(_Visitor& __visitor,_Variants& ... __v){
-        __visit_helper<_VariantIndex-1,__visitor_indices<-1,_Indices...>>::
-            __visit(__visitor,__v...);
+        throw bad_variant_access("Visiting of empty variant");
     }
 };
 

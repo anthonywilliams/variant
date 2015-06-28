@@ -531,6 +531,12 @@ void visit(){
     v=std::string("hello");
     se::visit(visitor,v);
     assert(s=="hello");
+    try{
+        se::variant<int,std::string> v2;
+        se::visit(visitor,v2);
+        assert(!"Visiting empty should throw");
+    }
+    catch(se::bad_variant_access){}
 }
 
 void reference_members(){
@@ -672,6 +678,13 @@ void multivisitor(){
     assert(s=="hello");
     assert(d==0);
     assert(i2==37);
+
+    se::variant<double,int> v3;
+    try{
+        se::visit(visitor,v,v3);
+        assert(!"Visiting empty should throw");
+    }
+    catch(se::bad_variant_access){}
 }
 
 int main(){
