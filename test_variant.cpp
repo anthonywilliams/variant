@@ -605,8 +605,10 @@ void constexpr_variant(){
     assert(i5==-1);
     constexpr bool b5=v5.empty();
     assert(b5);
+    constexpr se::variant<> v6;
+    constexpr bool b6=v6.empty();
+    assert(b6);
 }
-
 
 int main(){
     initial_is_empty();
