@@ -589,6 +589,12 @@ void constexpr_variant(){
     constexpr se::variant<int> v(42);
     constexpr int i=se::get<int>(v);
     assert(i==42);
+    constexpr se::variant<int> v2(se::emplaced_index_t<0>(),42);
+    constexpr int i2=se::get<int>(v2);
+    assert(i2==42);
+    constexpr se::variant<int> v3(se::emplaced_type_t<int>(),42);
+    constexpr int i3=se::get<int>(v3);
+    assert(i3==42);
 }
 
 
