@@ -283,8 +283,36 @@ struct __storage_wrapper:__dummy_base{
 };
 
 template<typename _Type>
+struct __storage_wrapper<_Type&>{
+    _Type* __storage;
+
+    template<typename _Arg>
+    constexpr __storage_wrapper(_Arg& __arg):
+        __storage(&__arg){}
+
+    _Type& __get(){
+        return *__storage;
+    }
+    constexpr _Type const& __get() const{
+        return *__storage;
+    }
+};
+
+template<typename _Type>
 struct __variant_storage<_Type,false>{
     typedef __storage_wrapper<_Type> __type;
+
+    static constexpr _Type& __get(__type& __val){
+        return __val.__get();
+    }
+    static constexpr const _Type& __get(__type const& __val){
+        return __val.__get();
+    }
+};
+
+template<typename _Type,bool __b>
+struct __variant_storage<_Type&,__b>{
+    typedef __storage_wrapper<_Type&> __type;
 
     static constexpr _Type& __get(__type& __val){
         return __val.__get();
@@ -558,11 +586,8 @@ public:
 
     template<ptrdiff_t _Index,typename ... _Args>
     explicit constexpr variant(emplaced_index_t<_Index>,_Args&& ... __args):
-        __index(
-            (__emplace_construct<
-             typename __indexed_type<_Index,_Types...>::__type>(
-                 std::forward<_Args>(__args)...),
-             _Index))
+        __storage(emplaced_index_t<_Index>(),std::forward<_Args>(__args)...),
+        __index(_Index)
     {}
     
     template<typename _Type>
