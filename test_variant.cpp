@@ -610,6 +610,70 @@ void constexpr_variant(){
     assert(b6);
 }
 
+struct VisitorISD{
+    int& i;
+    std::string& s;
+    double& d;
+    int& i2;
+    
+    void operator()(int arg,double d_){
+        i=arg;
+        d=d_;
+    }
+    void operator()(std::string const& arg,double d_){
+        s=arg;
+        d=d_;
+    }
+    void operator()(int arg,int i2_){
+        i=arg;
+        i2=i2_;
+    }
+    void operator()(std::string const& arg,int i2_){
+        s=arg;
+        i2=i2_;
+    }
+    void operator()(se::empty_t arg,double d_){
+        d=d_;
+    }
+    void operator()(se::empty_t arg,int i2_){
+        i2=i2_;
+    }
+    void operator()(int arg,se::empty_t){
+        i=arg;
+    }
+    void operator()(std::string const& arg,se::empty_t){
+        s=arg;
+    }
+    void operator()(se::empty_t,se::empty_t){
+    }
+};
+
+void multivisitor(){
+    se::variant<int,char,std::string> v(42);
+    se::variant<double,int> v2(4.2);
+
+    int i=0;
+    std::string s;
+    double d=0;
+    int i2=0;
+    VisitorISD visitor{i,s,d,i2};
+    se::visit(visitor,v,v2);
+    assert(i==42);
+    assert(s=="");
+    assert(d==4.2);
+    assert(i2==0);
+    i=0;
+    d=0;
+    v=std::string("hello");
+    assert(v.index()==2);
+    v2=37;
+    se::visit(visitor,v,v2);
+    assert(i==0);
+    assert(s=="hello");
+    assert(d==0);
+    assert(i2==37);
+}
+
 int main(){
     initial_is_empty();
     empty_index_is_neg_one();
@@ -654,4 +718,5 @@ int main(){
     equality();
     less_than();
     constexpr_variant();
+    multivisitor();
 }

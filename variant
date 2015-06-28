@@ -731,6 +731,98 @@ void visit(_Visitor& __visitor,variant<_Types...>& __v){
     __visitor_table<_Visitor,_Types...>::__trampoline[__v.index()](__visitor,__v);
 }
 
+template<ptrdiff_t ... _Indices>
+struct __visitor_indices{};
+
+template<size_t _VariantIndex,typename _Indices>
+struct __visit_helper;
+
+template<ptrdiff_t ... _Indices>
+struct __visit_helper<0,__visitor_indices<_Indices...>>{
+    template<typename _Visitor,typename ... _Variants>
+    static void __visit(_Visitor& __visitor,_Variants& ... __v){
+        __visitor(get<_Indices>(__v)...);
+    }
+};
+
+template<size_t _Index,typename ... _Args>
+struct __arg_selector_t;
+
+template<typename _Head,typename ... _Rest>
+struct __arg_selector_t<0,_Head,_Rest...>{
+    typedef _Head __type;
+
+    static __type& __select(_Head& __head,_Rest& ...){
+        return __head;
+    }
+};
+
+template<size_t _Index,typename _Head,typename ... _Rest>
+struct __arg_selector_t<_Index,_Head,_Rest...>{
+    typedef typename __arg_selector_t<_Index-1,_Rest...>::__type __type;
+    static __type& __select(_Head&,_Rest& ... __rest){
+        return __arg_selector_t<_Index-1,_Rest...>::__select(__rest...);
+    }
+};
+
+template<size_t _Index,typename ... _Args>
+typename __arg_selector_t<_Index,_Args...>::__type&& __arg_selector(_Args&& ... __args){
+    return std::forward<typename __arg_selector_t<_Index,_Args...>::__type>(
+        __arg_selector_t<_Index,_Args...>::__select(__args...));
+}
+
+template<ptrdiff_t _Index,size_t _VariantIndex,ptrdiff_t ... _Indices>
+struct __visit_helper2{
+    template<typename _Visitor,typename ... _Variants>
+    static void __visit(_Visitor& __visitor,_Variants& ... __v){
+        if(__arg_selector<_VariantIndex-1>(__v...).index()==_Index){
+            __visit_helper<_VariantIndex-1,__visitor_indices<_Index,_Indices...>>::
+                __visit(__visitor,__v...);
+        }
+        else{
+            __visit_helper2<_Index-1,_VariantIndex,_Indices...>::__visit(
+                __visitor,__v...);
+        }
+        
+    }
+};
+
+template<size_t _VariantIndex,ptrdiff_t ... _Indices>
+struct __visit_helper2<-1,_VariantIndex,_Indices...>{
+    template<typename _Visitor,typename ... _Variants>
+    static void __visit(_Visitor& __visitor,_Variants& ... __v){
+        __visit_helper<_VariantIndex-1,__visitor_indices<-1,_Indices...>>::
+            __visit(__visitor,__v...);
+    }
+};
+
+template<typename _Variant>
+struct __variant_type_count;
+
+template<typename ... _Types>
+struct __variant_type_count<variant<_Types...>>{
+    static constexpr size_t __value=sizeof...(_Types);
+};
+
+template<size_t _VariantIndex,ptrdiff_t ... _Indices>
+struct __visit_helper<_VariantIndex,__visitor_indices<_Indices...>>{
+
+    template<typename _Visitor,typename ... _Variants>
+    static void __visit(_Visitor& __visitor,_Variants& ... __v){
+        __visit_helper2<
+            __variant_type_count<
+                typename __arg_selector_t<
+                    _VariantIndex-1,_Variants...>::__type>::__value-1,
+            _VariantIndex,_Indices...>::__visit(
+            __visitor,__v...);
+    }
+};
+
+template<typename _Visitor,typename ... _Variants>
+void visit(_Visitor& __visitor,_Variants& ... __v){
+    __visit_helper<sizeof...(_Variants),__visitor_indices<>>::__visit(__visitor,__v...);
+}
+
 template<typename ... _Types>
 bool operator==(variant<_Types...> const& __lhs,variant<_Types...> const& __rhs){
     return (__lhs.index()==__rhs.index()) &&
