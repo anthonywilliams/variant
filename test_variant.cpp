@@ -585,6 +585,13 @@ void less_than(){
     assert(v2<v3);
 }
 
+void constexpr_variant(){
+    constexpr se::variant<int> v(42);
+    constexpr int i=se::get<int>(v);
+    assert(i==42);
+}
+
+
 int main(){
     initial_is_empty();
     empty_index_is_neg_one();
@@ -628,4 +635,5 @@ int main(){
     reference_members();
     equality();
     less_than();
+    constexpr_variant();
 }

@@ -123,16 +123,16 @@ template<typename ... _Types>
 class variant;
 
 template<typename _Type,typename ... _Types>
-_Type& get(variant<_Types...>&);
+constexpr _Type& get(variant<_Types...>&);
 
 template<typename _Type,typename ... _Types>
-_Type const& get(variant<_Types...> const&);
+constexpr _Type const& get(variant<_Types...> const&);
 
 template<ptrdiff_t _Index,typename ... _Types>
-typename __indexed_type<_Index,_Types...>::__type& get(variant<_Types...>&);
+constexpr typename __indexed_type<_Index,_Types...>::__type& get(variant<_Types...>&);
 
 template<ptrdiff_t _Index,typename ... _Types>
-typename __indexed_type<_Index,_Types...>::__type const& get(
+constexpr typename __indexed_type<_Index,_Types...>::__type const& get(
     variant<_Types...> const&);
 
 template<ptrdiff_t _Index,typename ... _Types>
@@ -546,9 +546,14 @@ public:
     
     template<typename _Type>
     constexpr variant(_Type&& __x):
-        __index(__emplace_construct<typename std::remove_const<
-                typename std::remove_reference<_Type>::type>::type>(
-                    std::forward<_Type>(__x)))
+        __storage(
+            emplaced_index_t<
+            __type_index<typename std::remove_const<
+            typename std::remove_reference<_Type>::type>::type,_Types...>::__value>(),
+            std::forward<_Type>(__x)),
+        __index(
+            __type_index<typename std::remove_const<
+            typename std::remove_reference<_Type>::type>::type,_Types...>::__value)
     {}
 
     template<typename _Type>
@@ -661,28 +666,26 @@ struct __variant_accessor{
 };
 
 template<typename _Type,typename ... _Types>
-_Type& get(variant<_Types...>& __v){
+constexpr _Type& get(variant<_Types...>& __v){
     return get<__type_index<_Type,_Types...>::__value>(__v);
 }
 
 template<typename _Type,typename ... _Types>
-_Type const& get(variant<_Types...> const& __v){
+constexpr _Type const& get(variant<_Types...> const& __v){
     return get<__type_index<_Type,_Types...>::__value>(__v);
 }
 
 template<ptrdiff_t _Index,typename ... _Types>
-typename __indexed_type<_Index,_Types...>::__type const& get(
+constexpr typename __indexed_type<_Index,_Types...>::__type const& get(
     variant<_Types...> const& __v){
-    if(_Index!=__v.index())
-        throw bad_variant_access("Bad variant index in get");
-    return __variant_accessor<_Index,_Types...>::get(__v);
+    return *((_Index!=__v.index())?throw bad_variant_access("Bad variant index in get"):
+        &__variant_accessor<_Index,_Types...>::get(__v));
 }
 
 template<ptrdiff_t _Index,typename ... _Types>
-typename __indexed_type<_Index,_Types...>::__type& get(variant<_Types...>& __v){
-    if(_Index!=__v.index())
-        throw bad_variant_access("Bad variant index in get");
-    return __variant_accessor<_Index,_Types...>::get(__v);
+constexpr typename __indexed_type<_Index,_Types...>::__type& get(variant<_Types...>& __v){
+    return *((_Index!=__v.index())?throw bad_variant_access("Bad variant index in get"):
+        &__variant_accessor<_Index,_Types...>::get(__v));
 }
 
 template<typename _Type,typename ... _Types>
