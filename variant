@@ -163,14 +163,6 @@ template<typename _Type>
 struct __stored_type{
     typedef _Type __type;
 
-    static constexpr _Type& __get(void* __storage){
-        return *static_cast<__type*>(__storage);
-    }
-
-    static constexpr const _Type& __get(const void* __storage){
-        return *static_cast<const __type*>(__storage);
-    }
-    
     static void __destroy(void* __storage){
         static_cast<__type*>(__storage)->~__type();
     }
@@ -180,14 +172,6 @@ template<typename _Type>
 struct __stored_type<_Type&>{
     typedef _Type* __type;
 
-    static constexpr _Type& __get(void* __storage){
-        return **static_cast<__type*>(__storage);
-    }
-
-    static constexpr const _Type& __get(const void* __storage){
-        return **static_cast<const __type*>(__storage);
-    }
-    
     static void __destroy(void* __storage){
         static_cast<__type*>(__storage)->~__type();
     }
