@@ -408,33 +408,11 @@ struct __indexed_variant_ops<__index_sequence<_Indices...>,_Types...>{
     typedef __variant_ops<_Types...> __ops;
 
     static constexpr
-    typename __ops::__move_func_type
-    __move_construct[sizeof...(_Indices)]={
-        (&__ops::template __move_construct_func<_Indices>)...
-    };
-
-    static constexpr
-    typename __ops::__move_func_type
-    __move_assign[sizeof...(_Indices)]={
-        (&__ops::template __move_assign_func<_Indices>)...
-    };
-
-    static constexpr
     typename __ops::__unary_func_type
     __destroy[sizeof...(_Indices)]={
         (&__ops::template __destroy_func<_Indices>)...
     };
 };
-
-template<ptrdiff_t ... _Indices,typename ... _Types>
-constexpr typename __variant_ops<_Types...>::__move_func_type
-__indexed_variant_ops<__index_sequence<_Indices...>,_Types...>::__move_construct[
-    sizeof...(_Indices)];
-
-template<ptrdiff_t ... _Indices,typename ... _Types>
-constexpr typename __variant_ops<_Types...>::__move_func_type
-__indexed_variant_ops<__index_sequence<_Indices...>,_Types...>::__move_assign[
-    sizeof...(_Indices)];
 
 template<ptrdiff_t ... _Indices,typename ... _Types>
 constexpr typename __variant_ops<_Types...>::__unary_func_type
@@ -448,6 +426,57 @@ template<typename ... _Types>
 struct __variant_indices<variant<_Types...>>{
     typedef typename __type_indices<_Types...>::__type __type;
 };
+
+template<typename _Variant,
+         typename _Indices=typename __variant_indices<_Variant>::__type>
+struct __move_construct_op_table;
+
+template<typename _Variant,ptrdiff_t ... _Indices>
+struct __move_construct_op_table<_Variant,__index_sequence<_Indices...>>{
+    typedef void(* const __func_type)(_Variant*,_Variant&);
+    
+    template<ptrdiff_t _Index>
+    static void __move_construct_func(
+        _Variant * __lhs,_Variant& __rhs){
+        new(&__lhs->__storage) typename _Variant::__storage_type(
+            emplaced_index_t<_Index>(),std::move(get<_Index>(__rhs)));
+    }
+
+    static constexpr __func_type __apply[sizeof...(_Indices)]={
+        &__move_construct_func<_Indices>...
+    };
+};
+
+template<typename _Variant,ptrdiff_t ... _Indices>
+constexpr typename __move_construct_op_table<_Variant,__index_sequence<_Indices...>>::
+__func_type
+__move_construct_op_table<_Variant,__index_sequence<_Indices...>>::__apply[
+    sizeof...(_Indices)];
+
+template<typename _Variant,
+         typename _Indices=typename __variant_indices<_Variant>::__type>
+struct __move_assign_op_table;
+
+template<typename _Variant,ptrdiff_t ... _Indices>
+struct __move_assign_op_table<_Variant,__index_sequence<_Indices...>>{
+    typedef void(* const __func_type)(_Variant*,_Variant&);
+    
+    template<ptrdiff_t _Index>
+    static void __move_assign_func(
+        _Variant * __lhs,_Variant& __rhs){
+        get<_Index>(*__lhs)=std::move(get<_Index>(__rhs));
+    }
+
+    static constexpr __func_type __apply[sizeof...(_Indices)]={
+        &__move_assign_func<_Indices>...
+    };
+};
+
+template<typename _Variant,ptrdiff_t ... _Indices>
+constexpr typename __move_assign_op_table<_Variant,__index_sequence<_Indices...>>::
+__func_type
+__move_assign_op_table<_Variant,__index_sequence<_Indices...>>::__apply[
+    sizeof...(_Indices)];
 
 template<typename _Variant,
          typename _Indices=typename __variant_indices<_Variant>::__type>
@@ -555,29 +584,8 @@ struct __variant_ops{
     typedef typename __type_indices<_Types...>::__type __indices;
     typedef variant<_Types...> __variant_type;
     typedef typename variant<_Types...>::__storage_type __storage_type;
-    typedef void(* const __copy_func_type)(__variant_type*,__variant_type const&);
-    typedef void(* const __move_func_type)(__variant_type*,__variant_type&);
     typedef void(* const __unary_func_type)(__variant_type*);
-
-    template<ptrdiff_t _Index>
-    static void __move_construct_func(
-        __variant_type* __self,__variant_type& __other){
-        new(&__self->__storage) __storage_type(
-            emplaced_index_t<_Index>(),std::move(get<_Index>(__other)));
-    }
-    
-    template<ptrdiff_t _Index>
-    static void __copy_assign_func(
-        __variant_type* __self,__variant_type const& __other){
-        get<_Index>(*__self)=get<_Index>(__other);
-    }
-
-    template<ptrdiff_t _Index>
-    static void __move_assign_func(
-        __variant_type* __self,__variant_type& __other){
-        get<_Index>(*__self)=std::move(get<_Index>(__other));
-        __other.__destroy_self();
-    }
+    typedef void(* const __swap_func_type)(__variant_type*,__variant_type&);
 
     template<ptrdiff_t _Index>
     static void __destroy_func(__variant_type* __self){
@@ -590,11 +598,7 @@ struct __variant_ops{
         swap(get<_Type>(*__self),get<_Type>(__other));
     }
 
-    static constexpr __move_func_type (&__move_construct)[sizeof...(_Types)]=
-        __indexed_variant_ops<__indices,_Types...>::__move_construct;
-    static constexpr __move_func_type (&__move_assign)[sizeof...(_Types)]=
-        __indexed_variant_ops<__indices,_Types...>::__move_assign;
-    static constexpr __move_func_type __swap[sizeof...(_Types)]={
+    static constexpr __swap_func_type __swap[sizeof...(_Types)]={
         &__swap_func<_Types>...
     };
     static constexpr __unary_func_type (&__destroy)[sizeof...(_Types)]=
@@ -602,7 +606,7 @@ struct __variant_ops{
 };
 
 template<typename ... _Types>
-constexpr typename __variant_ops<_Types...>::__move_func_type
+constexpr typename __variant_ops<_Types...>::__swap_func_type
 __variant_ops<_Types...>::__swap[sizeof...(_Types)];
 
 template<typename _Variant>
@@ -627,6 +631,8 @@ class variant: private __variant_base<variant<_Types...>,__all_trivially_destruc
     friend struct __variant_ops<_Types...>;
     friend struct __copy_construct_op_table<variant>;
     friend struct __copy_assign_op_table<variant>;
+    friend struct __move_construct_op_table<variant>;
+    friend struct __move_assign_op_table<variant>;
     
     template<ptrdiff_t _Index,typename ... _Types2>
     friend struct __variant_accessor;
@@ -654,7 +660,7 @@ class variant: private __variant_base<variant<_Types...>,__all_trivially_destruc
         ptrdiff_t const __other_index=__other.index();
         if(__other_index==-1)
             return -1;
-        __variant_ops<_Types...>::__move_construct[__other_index](this,__other);
+        __move_construct_op_table<variant>::__apply[__other_index](this,__other);
         __other.__destroy_self();
         return __other_index;
     }
@@ -758,7 +764,8 @@ public:
             __destroy_self();
         }
         else if(__other.__index==__index){
-            __variant_ops<_Types...>::__move_assign[__index](this,__other);
+            __move_assign_op_table<variant>::__apply[__index](this,__other);
+            __other.__destroy_self();
         }
         else{
             __destroy_self();
