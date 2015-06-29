@@ -788,6 +788,13 @@ void visitor_with_non_void_return(){
     assert(visit([](auto i){return i*2;},v)==84);
 }
 
+void multi_visitor_with_non_void_return(){
+    se::variant<int> v(42);
+    se::variant<double> v2(4.2);
+
+    assert(visit([](auto i,auto j){return i+j;},v,v2)==46.2);
+}
+
 int main(){
     initial_is_empty();
     empty_index_is_neg_one();
@@ -843,4 +850,5 @@ int main(){
     construction_with_conversion();
     assignment_with_conversion();
     visitor_with_non_void_return();
+    multi_visitor_with_non_void_return();
 }

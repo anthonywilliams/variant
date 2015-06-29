@@ -1053,14 +1053,21 @@ visit(_Visitor&& __visitor,variant<_Types...>& __v){
     return __visitor_table<_Visitor,_Types...>::__trampoline[__v.index()](__visitor,__v);
 }
 
+template<typename _Visitor,typename ... _Variants>
+struct __multi_visitor_return_type{
+    typedef decltype(std::declval<_Visitor&>()(get<0>(std::declval<_Variants>())...))
+    __type;
+};
+
 template<size_t _VariantIndex,typename _Indices>
 struct __visit_helper;
 
 template<ptrdiff_t ... _Indices>
 struct __visit_helper<0,__index_sequence<_Indices...>>{
     template<typename _Visitor,typename ... _Variants>
-    static void __visit(_Visitor& __visitor,_Variants& ... __v){
-        __visitor(get<_Indices>(__v)...);
+    static typename __multi_visitor_return_type<_Visitor,_Variants...>::__type
+    __visit(_Visitor& __visitor,_Variants& ... __v){
+        return __visitor(get<_Indices>(__v)...);
     }
 };
 
@@ -1093,14 +1100,16 @@ typename __arg_selector_t<_Index,_Args...>::__type&& __arg_selector(_Args&& ... 
 template<ptrdiff_t _Index,size_t _VariantIndex,ptrdiff_t ... _Indices>
 struct __visit_helper2{
     template<typename _Visitor,typename ... _Variants>
-    static void __visit(_Visitor& __visitor,_Variants& ... __v){
+    static typename __multi_visitor_return_type<_Visitor,_Variants...>::__type
+    __visit(_Visitor& __visitor,_Variants&& ... __v){
         if(__arg_selector<_VariantIndex-1>(__v...).index()==_Index){
-            __visit_helper<_VariantIndex-1,__index_sequence<_Index,_Indices...>>::
-                __visit(__visitor,__v...);
+            return __visit_helper<
+                _VariantIndex-1,__index_sequence<_Index,_Indices...>>::
+                __visit(__visitor,std::forward<_Variants>(__v)...);
         }
         else{
-            __visit_helper2<_Index-1,_VariantIndex,_Indices...>::__visit(
-                __visitor,__v...);
+            return __visit_helper2<_Index-1,_VariantIndex,_Indices...>::__visit(
+                __visitor,std::forward<_Variants>(__v)...);
         }
         
     }
@@ -1109,7 +1118,8 @@ struct __visit_helper2{
 template<size_t _VariantIndex,ptrdiff_t ... _Indices>
 struct __visit_helper2<-1,_VariantIndex,_Indices...>{
     template<typename _Visitor,typename ... _Variants>
-    static void __visit(_Visitor& __visitor,_Variants& ... __v){
+    static typename __multi_visitor_return_type<_Visitor,_Variants...>::__type
+    __visit(_Visitor& __visitor,_Variants&& ... __v){
         throw bad_variant_access("Visiting of empty variant");
     }
 };
@@ -1122,28 +1132,36 @@ struct __variant_type_count<variant<_Types...>>{
     static constexpr size_t __value=sizeof...(_Types);
 };
 
+template<typename _Variant>
+struct __variant_type_count<_Variant&>{
+    static constexpr size_t __value=__variant_type_count<_Variant>::__value;
+};
+
+template<typename _Variant>
+struct __variant_type_count<_Variant const&>{
+    static constexpr size_t __value=__variant_type_count<_Variant>::__value;
+};
+
 template<size_t _VariantIndex,ptrdiff_t ... _Indices>
 struct __visit_helper<_VariantIndex,__index_sequence<_Indices...>>{
 
     template<typename _Visitor,typename ... _Variants>
-    static void __visit(_Visitor& __visitor,_Variants& ... __v){
-        __visit_helper2<
+    static typename __multi_visitor_return_type<_Visitor,_Variants...>::__type
+    __visit(_Visitor& __visitor,_Variants&& ... __v){
+        return __visit_helper2<
             __variant_type_count<
                 typename __arg_selector_t<
                     _VariantIndex-1,_Variants...>::__type>::__value-1,
             _VariantIndex,_Indices...>::__visit(
-            __visitor,__v...);
+                __visitor,std::forward<_Variants&&>(__v)...);
     }
 };
 
 template<typename _Visitor,typename ... _Variants>
-void visit(_Visitor& __visitor,_Variants& ... __v){
-    __visit_helper<sizeof...(_Variants),__index_sequence<>>::__visit(__visitor,__v...);
-}
-
-template<typename _Visitor,typename ... _Variants>
-void visit(_Visitor const& __visitor,_Variants& ... __v){
-    __visit_helper<sizeof...(_Variants),__index_sequence<>>::__visit(__visitor,__v...);
+typename __multi_visitor_return_type<_Visitor,_Variants...>::__type
+visit(_Visitor&& __visitor,_Variants&& ... __v){
+    return __visit_helper<sizeof...(_Variants),__index_sequence<>>::__visit(
+        __visitor,std::forward<_Variants>(__v)...);
 }
 
 template<typename ... _Types>
