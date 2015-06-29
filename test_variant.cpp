@@ -755,6 +755,12 @@ void can_emplace_empty_by_index(){
     assert(v2.empty());
 }
 
+void direct_init_reference_member(){
+    int i=42;
+    se::variant<int&> v(i);
+    assert(&se::get<int&>(v)==&i);
+}
+
 int main(){
     initial_is_empty();
     empty_index_is_neg_one();
@@ -805,4 +811,5 @@ int main(){
     non_movable_types();
     can_emplace_empty();
     can_emplace_empty_by_index();
+    direct_init_reference_member();
 }
