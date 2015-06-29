@@ -89,8 +89,6 @@ struct __type_index<empty_t,_Types...>{
     static constexpr ptrdiff_t __value=-1;
 };
 
-
-
 template<ptrdiff_t _Index,typename ... _Types>
 struct __indexed_type;
 
@@ -305,6 +303,13 @@ union __variant_data<>{
 
     constexpr __variant_data():
         __dummy(){}
+
+    empty_t& __get(emplaced_index_t<-1>){
+        return __dummy;
+    }
+    constexpr const empty_t& __get(emplaced_index_t<-1>) const{
+        return __dummy;
+    }
 };
 
 template<typename _Type>
@@ -324,6 +329,12 @@ union __variant_data<_Type>{
     }
     constexpr const _Type& __get(emplaced_index_t<0>) const{
         return __variant_storage<_Type>::__get(__val);
+    }
+    empty_t& __get(emplaced_index_t<-1>){
+        return __dummy;
+    }
+    constexpr const empty_t& __get(emplaced_index_t<-1>) const{
+        return __dummy;
     }
 };
 
@@ -360,6 +371,14 @@ union __variant_data<_Head,_Rest...>{
         emplaced_index_t<_Index>) const{
         return __rest.__get(emplaced_index_t<_Index-1>());
     }
+
+    empty_t& __get(emplaced_index_t<-1>){
+        return __head.__get(emplaced_index_t<-1>());
+    }
+
+    constexpr const empty_t& __get(emplaced_index_t<-1>) const{
+        return __head.__get(emplaced_index_t<-1>());
+    }
 };
 
 
@@ -370,20 +389,65 @@ struct __all_trivially_destructible<_Head,_Rest...> {
         __all_trivially_destructible<_Rest...>::__value;
 };
 
+template<ptrdiff_t... _Indices>
+struct __variant_indices{
+    typedef __variant_indices<_Indices...,sizeof...(_Indices)> __next;
+};
+
+template<typename ... _Types>
+struct __type_indices;
+
+template<>
+struct __type_indices<>{
+    typedef __variant_indices<> __type;
+};
+
+template<typename _Type>
+struct __type_indices<_Type>{
+    typedef __variant_indices<0> __type;
+};
+
+template<typename _Type,typename ... _Rest>
+struct __type_indices<_Type,_Rest...>{
+    typedef typename __type_indices<_Rest...>::__type::__next __type;
+};
+
+template<typename _Indices,typename ... _Types>
+struct __indexed_variant_ops;
+
+template<typename ... _Types>
+struct __variant_ops;
+
+template<ptrdiff_t ... _Indices,typename ... _Types>
+struct __indexed_variant_ops<__variant_indices<_Indices...>,_Types...>{
+    typedef __variant_ops<_Types...> __ops;
+    static constexpr
+    typename __ops::__copy_func_type
+    __copy_construct[sizeof...(_Indices)]={
+        (&__ops::template __copy_construct_func<_Indices>)...
+    };
+};
+
+template<ptrdiff_t ... _Indices,typename ... _Types>
+constexpr typename __variant_ops<_Types...>::__copy_func_type
+__indexed_variant_ops<__variant_indices<_Indices...>,_Types...>::__copy_construct[
+    sizeof...(_Indices)];
+
 template<typename ... _Types>
 struct __variant_ops{
+    typedef typename __type_indices<_Types...>::__type __indices;
     typedef variant<_Types...> __variant_type;
-    typedef void(*__copy_func_type)(__variant_type*,__variant_type const&);
-    typedef void(*__move_func_type)(__variant_type*,__variant_type&);
-    typedef void(*__unary_func_type)(__variant_type*);
-    typedef bool(*__compare_func_type)(__variant_type const&,__variant_type const&);
+    typedef typename variant<_Types...>::__storage_type __storage_type;
+    typedef void(* const __copy_func_type)(__variant_type*,__variant_type const&);
+    typedef void(* const __move_func_type)(__variant_type*,__variant_type&);
+    typedef void(* const __unary_func_type)(__variant_type*);
+    typedef bool(* const __compare_func_type)(__variant_type const&,__variant_type const&);
 
-    template<typename _Type>
+    template<ptrdiff_t _Index>
     static void __copy_construct_func(
         __variant_type* __self,__variant_type const& __other){
-        __stored_type<_Type>::__construct(
-            &__self->__storage,
-            __stored_type<_Type>::__get(&__other.__storage));
+        new(&__self->__storage) __storage_type(
+            emplaced_index_t<_Index>(),get<_Index>(__other));
     }
 
     template<typename _Type>
@@ -429,10 +493,11 @@ struct __variant_ops{
         __variant_type const& __lhs,__variant_type const& __rhs){
         return get<_Type>(__lhs)<get<_Type>(__rhs);
     }
+
+    typedef __copy_func_type (&__copy_construct_table_type)[sizeof...(_Types)];
     
-    static constexpr __copy_func_type __copy_construct[sizeof...(_Types)]={
-        &__copy_construct_func<_Types>...
-    };
+    static constexpr __copy_construct_table_type __copy_construct=
+        __indexed_variant_ops<__indices,_Types...>::__copy_construct;
     static constexpr __move_func_type __move_construct[sizeof...(_Types)]={
         &__move_construct_func<_Types>...
     };
@@ -455,10 +520,6 @@ struct __variant_ops{
         &__less_than_compare_func<_Types>...
     };
 };
-
-template<typename ... _Types>
-constexpr typename __variant_ops<_Types...>::__copy_func_type
-__variant_ops<_Types...>::__copy_construct[sizeof...(_Types)];
 
 template<typename ... _Types>
 constexpr typename __variant_ops<_Types...>::__move_func_type
@@ -488,6 +549,9 @@ template<typename ... _Types>
 constexpr typename __variant_ops<_Types...>::__compare_func_type
 __variant_ops<_Types...>::__less_than_compare[sizeof...(_Types)];
 
+template<typename _Variant>
+struct __variant_storage_type;
+
 template<typename _Derived,bool __trivial_destructor>
 struct __variant_base
 {
@@ -509,13 +573,14 @@ class variant: private __variant_base<variant<_Types...>,__all_trivially_destruc
     template<ptrdiff_t _Index,typename ... _Types2>
     friend struct __variant_accessor;
 
-    __variant_data<_Types...> __storage;
+    typedef __variant_data<_Types...> __storage_type;
+    __storage_type __storage;
     typename __discriminator_type<sizeof ... (_Types)>::__type __index;
 
     template<typename _Type,typename ... _Args>
     ptrdiff_t __emplace_construct(_Args&& ... __args){
         __stored_type<_Type>::__construct(
-            &__storage,std::forward<_Args>(__args)...);
+            &this->__storage,std::forward<_Args>(__args)...);
         return  __type_index<_Type,_Types...>::__value;
     }
     
@@ -597,7 +662,8 @@ public:
         }
         else{
             __destroy_self();
-            __stored_type<__type>::__construct(&__storage,std::forward<_Type>(__x));
+            __stored_type<__type>::__construct(
+                &this->__storage,std::forward<_Type>(__x));
             __index=_Index;
         }
         return *this;
@@ -675,24 +741,14 @@ public:
     }
 };
 
-template<typename ... _Types>
-struct __variant_accessor<-1,_Types...>{
-    static constexpr empty_t& get(variant<_Types...>& __v){
-        return __stored_type<empty_t>::__get(&__v.__storage);
-    }
-    static constexpr empty_t const& get(variant<_Types...> const& __v){
-        return __stored_type<empty_t>::__get(&__v.__storage);
-    }
-};
-
 template<ptrdiff_t _Index,typename ... _Types>
 struct __variant_accessor{
     typedef typename __indexed_type<_Index,_Types...>::__type __type;
     static constexpr __type& get(variant<_Types...>& __v){
-        return __stored_type<__type>::__get(&__v.__storage);
+        return __v.__storage.__get(emplaced_index_t<_Index>());
     }
     static constexpr __type const& get(variant<_Types...> const& __v){
-        return __stored_type<__type>::__get(&__v.__storage);
+        return __v.__storage.__get(emplaced_index_t<_Index>());
     }
 };
 
