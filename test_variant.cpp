@@ -766,7 +766,7 @@ void reference_types_preferred_for_lvalue(){
     se::variant<int,int&> v(i);
     assert(v.index()==1);
 
-    se::variant<int> v2(42);
+    se::variant<int,int&> v2(42);
     assert(v2.index()==0);
 }
 
