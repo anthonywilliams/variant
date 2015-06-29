@@ -471,7 +471,7 @@ constexpr typename __variant_ops<_Types...>::__compare_func_type
 __variant_ops<_Types...>::__less_than_compare[sizeof...(_Types)];
 
 template<typename _Derived,bool __trivial_destructor>
-struct __variant_base: empty_t
+struct __variant_base
 {
     ~__variant_base(){
         static_cast<_Derived*>(this)->__destroy_self();
@@ -479,7 +479,7 @@ struct __variant_base: empty_t
 };
 
 template<typename _Derived>
-struct __variant_base<_Derived,true>:empty_t{
+struct __variant_base<_Derived,true>{
 };
 
 template<typename ... _Types>
@@ -660,10 +660,10 @@ public:
 template<typename ... _Types>
 struct __variant_accessor<-1,_Types...>{
     static constexpr empty_t& get(variant<_Types...>& __v){
-        return static_cast<empty_t&>(__v);
+        return __stored_type<empty_t>::__get(&__v.__storage);
     }
     static constexpr empty_t const& get(variant<_Types...> const& __v){
-        return static_cast<empty_t const&>(__v);
+        return __stored_type<empty_t>::__get(&__v.__storage);
     }
 };
 
