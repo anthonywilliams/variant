@@ -746,6 +746,15 @@ void can_emplace_empty(){
     assert(v2.empty());
 }
 
+void can_emplace_empty_by_index(){
+    se::variant<int> v(42);
+    v.emplace<-1>();
+    assert(v.empty());
+    se::variant<int,std::string> v2(42);
+    v2.emplace<-1>();
+    assert(v2.empty());
+}
+
 int main(){
     initial_is_empty();
     empty_index_is_neg_one();
@@ -795,4 +804,5 @@ int main(){
     duplicate_types();
     non_movable_types();
     can_emplace_empty();
+    can_emplace_empty_by_index();
 }
