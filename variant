@@ -424,8 +424,8 @@ struct __move_construct_op_table<_Variant,__index_sequence<_Indices...>>{
     template<ptrdiff_t _Index>
     static void __move_construct_func(
         _Variant * __lhs,_Variant& __rhs){
-        new(&__lhs->__storage) typename _Variant::__storage_type(
-            emplaced_index_t<_Index>(),std::move(get<_Index>(__rhs)));
+        __lhs->template __emplace_construct<_Index>(
+            std::move(get<_Index>(__rhs)));
     }
 
     static constexpr __func_type __apply[sizeof...(_Indices)]={
@@ -475,8 +475,8 @@ struct __copy_construct_op_table<_Variant,__index_sequence<_Indices...>>{
     template<ptrdiff_t _Index>
     static void __copy_construct_func(
         _Variant * __lhs,_Variant const& __rhs){
-        new(&__lhs->__storage) typename _Variant::__storage_type(
-            emplaced_index_t<_Index>(),get<_Index>(__rhs));
+        __lhs->template __emplace_construct<_Index>(
+            get<_Index>(__rhs));
     }
 
     static constexpr __func_type __apply[sizeof...(_Indices)]={
@@ -630,6 +630,14 @@ template<typename _Derived>
 struct __variant_base<_Derived,true>{
 };
 
+template<typename _Type,typename ... _Types>
+struct __type_index_to_construct{
+    static constexpr ptrdiff_t __value=__type_index<
+        typename std::remove_const<
+            typename std::remove_reference<_Type>::type
+            >::type,_Types...>::__value;
+};
+
 template<typename ... _Types>
 class variant: private __variant_base<variant<_Types...>,__all_trivially_destructible<_Types...>::__value>{
     typedef __variant_base<variant<_Types...>,__all_trivially_destructible<_Types...>::__value> __base_type;
@@ -714,26 +722,21 @@ public:
     constexpr variant(_Type&& __x):
         __storage(
             emplaced_index_t<
-            __type_index<typename std::remove_const<
-            typename std::remove_reference<_Type>::type>::type,_Types...>::__value>(),
+            __type_index_to_construct<_Type,_Types...>::__value>(),
             std::forward<_Type>(__x)),
-        __index(
-            __type_index<typename std::remove_const<
-            typename std::remove_reference<_Type>::type>::type,_Types...>::__value)
+        __index(__type_index_to_construct<_Type,_Types...>::__value)
     {}
 
     template<typename _Type>
     variant& operator=(_Type&& __x){
-        typedef typename std::remove_const<
-            typename std::remove_reference<_Type>::type>::type __type;
-        constexpr ptrdiff_t _Index=__type_index<__type,_Types...>::__value;
+        constexpr ptrdiff_t _Index=
+            __type_index_to_construct<_Type,_Types...>::__value;
         if(_Index==__index){
             get<_Index>(*this)=std::forward<_Type>(__x);
         }
         else{
             __destroy_self();
-            new(&__storage) __storage_type(
-                emplaced_index_t<_Index>(),std::forward<_Type>(__x));
+            __emplace_construct<_Index>(std::forward<_Type>(__x));
             __index=_Index;
         }
         return *this;
