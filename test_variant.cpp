@@ -721,6 +721,21 @@ void duplicate_types(){
     assert(se::get<1>(v2)==42);
     assert(se::get<int>(v2)==42);
 }
+struct NonMovable{
+    int i;
+    NonMovable():i(42){}
+    NonMovable(NonMovable&&)=delete;
+    NonMovable& operator=(NonMovable&&)=delete;
+};
+
+
+void non_movable_types(){
+    se::variant<NonMovable> v{se::emplaced_index_t<0>()};
+    assert(se::get<0>(v).i==42);
+    se::get<0>(v).i=37;
+    v.emplace<NonMovable>();
+    assert(se::get<0>(v).i==42);
+}
 
 int main(){
     initial_is_empty();
@@ -769,4 +784,5 @@ int main(){
     multivisitor();
     sizes();
     duplicate_types();
+    non_movable_types();
 }
