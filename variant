@@ -375,8 +375,8 @@ struct __all_trivially_destructible<_Head,_Rest...> {
 };
 
 template<ptrdiff_t... _Indices>
-struct __variant_indices{
-    typedef __variant_indices<_Indices...,sizeof...(_Indices)> __next;
+struct __index_sequence{
+    typedef __index_sequence<_Indices...,sizeof...(_Indices)> __next;
 };
 
 template<typename ... _Types>
@@ -384,12 +384,12 @@ struct __type_indices;
 
 template<>
 struct __type_indices<>{
-    typedef __variant_indices<> __type;
+    typedef __index_sequence<> __type;
 };
 
 template<typename _Type>
 struct __type_indices<_Type>{
-    typedef __variant_indices<0> __type;
+    typedef __index_sequence<0> __type;
 };
 
 template<typename _Type,typename ... _Rest>
@@ -404,7 +404,7 @@ template<typename ... _Types>
 struct __variant_ops;
 
 template<ptrdiff_t ... _Indices,typename ... _Types>
-struct __indexed_variant_ops<__variant_indices<_Indices...>,_Types...>{
+struct __indexed_variant_ops<__index_sequence<_Indices...>,_Types...>{
     typedef __variant_ops<_Types...> __ops;
     static constexpr
     typename __ops::__copy_func_type
@@ -438,27 +438,27 @@ struct __indexed_variant_ops<__variant_indices<_Indices...>,_Types...>{
 
 template<ptrdiff_t ... _Indices,typename ... _Types>
 constexpr typename __variant_ops<_Types...>::__copy_func_type
-__indexed_variant_ops<__variant_indices<_Indices...>,_Types...>::__copy_construct[
+__indexed_variant_ops<__index_sequence<_Indices...>,_Types...>::__copy_construct[
     sizeof...(_Indices)];
 
 template<ptrdiff_t ... _Indices,typename ... _Types>
 constexpr typename __variant_ops<_Types...>::__move_func_type
-__indexed_variant_ops<__variant_indices<_Indices...>,_Types...>::__move_construct[
+__indexed_variant_ops<__index_sequence<_Indices...>,_Types...>::__move_construct[
     sizeof...(_Indices)];
 
 template<ptrdiff_t ... _Indices,typename ... _Types>
 constexpr typename __variant_ops<_Types...>::__copy_func_type
-__indexed_variant_ops<__variant_indices<_Indices...>,_Types...>::__copy_assign[
+__indexed_variant_ops<__index_sequence<_Indices...>,_Types...>::__copy_assign[
     sizeof...(_Indices)];
 
 template<ptrdiff_t ... _Indices,typename ... _Types>
 constexpr typename __variant_ops<_Types...>::__move_func_type
-__indexed_variant_ops<__variant_indices<_Indices...>,_Types...>::__move_assign[
+__indexed_variant_ops<__index_sequence<_Indices...>,_Types...>::__move_assign[
     sizeof...(_Indices)];
 
 template<ptrdiff_t ... _Indices,typename ... _Types>
 constexpr typename __variant_ops<_Types...>::__unary_func_type
-__indexed_variant_ops<__variant_indices<_Indices...>,_Types...>::__destroy[
+__indexed_variant_ops<__index_sequence<_Indices...>,_Types...>::__destroy[
     sizeof...(_Indices)];
 
 template<typename ... _Types>
@@ -811,14 +811,11 @@ void visit(_Visitor& __visitor,variant<_Types...>& __v){
     __visitor_table<_Visitor,_Types...>::__trampoline[__v.index()](__visitor,__v);
 }
 
-template<ptrdiff_t ... _Indices>
-struct __visitor_indices{};
-
 template<size_t _VariantIndex,typename _Indices>
 struct __visit_helper;
 
 template<ptrdiff_t ... _Indices>
-struct __visit_helper<0,__visitor_indices<_Indices...>>{
+struct __visit_helper<0,__index_sequence<_Indices...>>{
     template<typename _Visitor,typename ... _Variants>
     static void __visit(_Visitor& __visitor,_Variants& ... __v){
         __visitor(get<_Indices>(__v)...);
@@ -856,7 +853,7 @@ struct __visit_helper2{
     template<typename _Visitor,typename ... _Variants>
     static void __visit(_Visitor& __visitor,_Variants& ... __v){
         if(__arg_selector<_VariantIndex-1>(__v...).index()==_Index){
-            __visit_helper<_VariantIndex-1,__visitor_indices<_Index,_Indices...>>::
+            __visit_helper<_VariantIndex-1,__index_sequence<_Index,_Indices...>>::
                 __visit(__visitor,__v...);
         }
         else{
@@ -884,7 +881,7 @@ struct __variant_type_count<variant<_Types...>>{
 };
 
 template<size_t _VariantIndex,ptrdiff_t ... _Indices>
-struct __visit_helper<_VariantIndex,__visitor_indices<_Indices...>>{
+struct __visit_helper<_VariantIndex,__index_sequence<_Indices...>>{
 
     template<typename _Visitor,typename ... _Variants>
     static void __visit(_Visitor& __visitor,_Variants& ... __v){
@@ -899,7 +896,7 @@ struct __visit_helper<_VariantIndex,__visitor_indices<_Indices...>>{
 
 template<typename _Visitor,typename ... _Variants>
 void visit(_Visitor& __visitor,_Variants& ... __v){
-    __visit_helper<sizeof...(_Variants),__visitor_indices<>>::__visit(__visitor,__v...);
+    __visit_helper<sizeof...(_Variants),__index_sequence<>>::__visit(__visitor,__v...);
 }
 
 template<typename ... _Types>
