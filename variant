@@ -162,10 +162,6 @@ struct __discriminator_type<__count,true,true,true>{
 template<typename _Type>
 struct __stored_type{
     typedef _Type __type;
-    template<typename ... _Args>
-    static constexpr void __construct(void* __storage,_Args&& ... __args){
-        new (__storage) _Type(std::forward<_Args>(__args)...);
-    }
 
     static constexpr _Type& __get(void* __storage){
         return *static_cast<__type*>(__storage);
@@ -183,11 +179,6 @@ struct __stored_type{
 template<typename _Type>
 struct __stored_type<_Type&>{
     typedef _Type* __type;
-
-    template<typename  _Arg>
-    static constexpr void __construct(void* __storage,_Arg& __arg){
-        new (__storage) __type(&__arg);
-    }
 
     static constexpr _Type& __get(void* __storage){
         return **static_cast<__type*>(__storage);
@@ -432,6 +423,17 @@ struct __indexed_variant_ops<__variant_indices<_Indices...>,_Types...>{
     __move_construct[sizeof...(_Indices)]={
         (&__ops::template __move_construct_func<_Indices>)...
     };
+
+    static constexpr
+    typename __ops::__copy_func_type
+    __copy_assign[sizeof...(_Indices)]={
+        (&__ops::template __copy_assign_func<_Indices>)...
+    };
+    static constexpr
+    typename __ops::__move_func_type
+    __move_assign[sizeof...(_Indices)]={
+        (&__ops::template __move_assign_func<_Indices>)...
+    };
 };
 
 template<ptrdiff_t ... _Indices,typename ... _Types>
@@ -442,6 +444,16 @@ __indexed_variant_ops<__variant_indices<_Indices...>,_Types...>::__copy_construc
 template<ptrdiff_t ... _Indices,typename ... _Types>
 constexpr typename __variant_ops<_Types...>::__move_func_type
 __indexed_variant_ops<__variant_indices<_Indices...>,_Types...>::__move_construct[
+    sizeof...(_Indices)];
+
+template<ptrdiff_t ... _Indices,typename ... _Types>
+constexpr typename __variant_ops<_Types...>::__copy_func_type
+__indexed_variant_ops<__variant_indices<_Indices...>,_Types...>::__copy_assign[
+    sizeof...(_Indices)];
+
+template<ptrdiff_t ... _Indices,typename ... _Types>
+constexpr typename __variant_ops<_Types...>::__move_func_type
+__indexed_variant_ops<__variant_indices<_Indices...>,_Types...>::__move_assign[
     sizeof...(_Indices)];
 
 template<typename ... _Types>
@@ -468,16 +480,16 @@ struct __variant_ops{
             emplaced_index_t<_Index>(),std::move(get<_Index>(__other)));
     }
     
-    template<typename _Type>
+    template<ptrdiff_t _Index>
     static void __copy_assign_func(
         __variant_type* __self,__variant_type const& __other){
-        get<_Type>(*__self)=get<_Type>(__other);
+        get<_Index>(*__self)=get<_Index>(__other);
     }
 
-    template<typename _Type>
+    template<ptrdiff_t _Index>
     static void __move_assign_func(
         __variant_type* __self,__variant_type& __other){
-        get<_Type>(*__self)=std::move(get<_Type>(__other));
+        get<_Index>(*__self)=std::move(get<_Index>(__other));
         __other.__destroy_self();
     }
 
@@ -508,12 +520,10 @@ struct __variant_ops{
         __indexed_variant_ops<__indices,_Types...>::__copy_construct;
     static constexpr __move_func_type (&__move_construct)[sizeof...(_Types)]=
         __indexed_variant_ops<__indices,_Types...>::__move_construct;
-    static constexpr __copy_func_type __copy_assign[sizeof...(_Types)]={
-        &__copy_assign_func<_Types>...
-    };
-    static constexpr __move_func_type __move_assign[sizeof...(_Types)]={
-        &__move_assign_func<_Types>...
-    };
+    static constexpr __copy_func_type (&__copy_assign)[sizeof...(_Types)]=
+        __indexed_variant_ops<__indices,_Types...>::__copy_assign;
+    static constexpr __move_func_type (&__move_assign)[sizeof...(_Types)]=
+        __indexed_variant_ops<__indices,_Types...>::__move_assign;
     static constexpr __move_func_type __swap[sizeof...(_Types)]={
         &__swap_func<_Types>...
     };
@@ -527,14 +537,6 @@ struct __variant_ops{
         &__less_than_compare_func<_Types>...
     };
 };
-
-template<typename ... _Types>
-constexpr typename __variant_ops<_Types...>::__copy_func_type
-__variant_ops<_Types...>::__copy_assign[sizeof...(_Types)];
-
-template<typename ... _Types>
-constexpr typename __variant_ops<_Types...>::__move_func_type
-__variant_ops<_Types...>::__move_assign[sizeof...(_Types)];
 
 template<typename ... _Types>
 constexpr typename __variant_ops<_Types...>::__move_func_type
@@ -580,11 +582,11 @@ class variant: private __variant_base<variant<_Types...>,__all_trivially_destruc
     __storage_type __storage;
     typename __discriminator_type<sizeof ... (_Types)>::__type __index;
 
-    template<typename _Type,typename ... _Args>
+    template<ptrdiff_t _Index,typename ... _Args>
     ptrdiff_t __emplace_construct(_Args&& ... __args){
-        __stored_type<_Type>::__construct(
-            &this->__storage,std::forward<_Args>(__args)...);
-        return  __type_index<_Type,_Types...>::__value;
+        new(&__storage) __storage_type(
+            emplaced_index_t<_Index>(),std::forward<_Args>(__args)...);
+        return  _Index;
     }
     
     void __destroy_self(){
@@ -665,8 +667,8 @@ public:
         }
         else{
             __destroy_self();
-            __stored_type<__type>::__construct(
-                &this->__storage,std::forward<_Type>(__x));
+            new(&__storage) __storage_type(
+                emplaced_index_t<_Index>(),std::forward<_Type>(__x));
             __index=_Index;
         }
         return *this;
@@ -715,14 +717,15 @@ public:
     template<typename _Type,typename ... _Args>
     void emplace(_Args&& ... __args){
         __destroy_self();
-        __index=__emplace_construct<_Type>(std::forward<_Args>(__args)...);
+        __index=__emplace_construct<
+            __type_index<_Type,_Types...>::__value>(
+                std::forward<_Args>(__args)...);
     }
     
     template<ptrdiff_t _Index,typename ... _Args>
     void emplace(_Args&& ... __args){
         __destroy_self();
-        __emplace_construct<typename __indexed_type<_Index,_Types...>::__type>(
-            std::forward<_Args>(__args)...);
+        __emplace_construct<_Index>(std::forward<_Args>(__args)...);
         __index=_Index;
     }
     
