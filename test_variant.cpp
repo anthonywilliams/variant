@@ -737,6 +737,15 @@ void non_movable_types(){
     assert(se::get<0>(v).i==42);
 }
 
+void can_emplace_empty(){
+    se::variant<int> v(42);
+    v.emplace<se::empty_t>();
+    assert(v.empty());
+    se::variant<int,std::string> v2(42);
+    v2.emplace<se::empty_t>();
+    assert(v2.empty());
+}
+
 int main(){
     initial_is_empty();
     empty_index_is_neg_one();
@@ -785,4 +794,5 @@ int main(){
     sizes();
     duplicate_types();
     non_movable_types();
+    can_emplace_empty();
 }

@@ -294,7 +294,11 @@ union __variant_data<_Type>{
 
     constexpr __variant_data():
         __dummy(){}
-    
+
+    template<typename ... _Args>
+    constexpr __variant_data(emplaced_index_t<-1>,_Args&& ... __args):
+        __dummy(std::forward<_Args>(__args)...){}
+
     template<typename ... _Args>
     constexpr __variant_data(emplaced_index_t<0>,_Args&& ... __args):
         __val(std::forward<_Args>(__args)...){}
@@ -323,6 +327,10 @@ union __variant_data<_Head,_Rest...>{
 
     constexpr __variant_data():
         __head(){}
+
+    template<typename ... _Args>
+    constexpr __variant_data(emplaced_index_t<-1>,_Args&& ... __args):
+        __head(emplaced_index_t<-1>(),std::forward<_Args>(__args)...){}
     
     template<typename ... _Args>
     constexpr __variant_data(emplaced_index_t<0>,_Args&& ... __args):
