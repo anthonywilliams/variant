@@ -162,19 +162,11 @@ struct __discriminator_type<__count,true,true,true>{
 template<typename _Type>
 struct __stored_type{
     typedef _Type __type;
-
-    static void __destroy(void* __storage){
-        static_cast<__type*>(__storage)->~__type();
-    }
 };
 
 template<typename _Type>
 struct __stored_type<_Type&>{
     typedef _Type* __type;
-
-    static void __destroy(void* __storage){
-        static_cast<__type*>(__storage)->~__type();
-    }
 };
 
 template<typename ... _Types>
@@ -204,6 +196,7 @@ struct __variant_storage{
     static constexpr const _Type& __get(__type const& __val){
         return __val;
     }
+    static void __destroy(__type&){}
 };
 
 struct __dummy_base{
@@ -229,6 +222,9 @@ struct __storage_wrapper:__dummy_base{
     }
     constexpr _Type const& __get() const{
         return *static_cast<_Type const*>(static_cast<void const*>(&__storage));
+    }
+    void __destroy(){
+        __get().~_Type();
     }
 };
 
@@ -258,6 +254,9 @@ struct __variant_storage<_Type,false>{
     static constexpr const _Type& __get(__type const& __val){
         return __val.__get();
     }
+    static void __destroy(__type& __val){
+        __val.__destroy();
+    }
 };
 
 template<typename _Type,bool __b>
@@ -270,6 +269,7 @@ struct __variant_storage<_Type&,__b>{
     static constexpr const _Type& __get(__type const& __val){
         return __val.__get();
     }
+    static void __destroy(__type&){}
 };
 
 template<>
@@ -310,6 +310,9 @@ union __variant_data<_Type>{
     }
     constexpr const empty_t& __get(emplaced_index_t<-1>) const{
         return __dummy;
+    }
+    void __destroy(emplaced_index_t<0>){
+        __variant_storage<_Type>::__destroy(__val);
     }
 };
 
@@ -353,6 +356,13 @@ union __variant_data<_Head,_Rest...>{
 
     constexpr const empty_t& __get(emplaced_index_t<-1>) const{
         return __head.__get(emplaced_index_t<-1>());
+    }
+    void __destroy(emplaced_index_t<0>){
+        __head.__destroy(emplaced_index_t<0>());
+    }
+    template<ptrdiff_t _Index>
+    void __destroy(emplaced_index_t<_Index>){
+        __rest.__destroy(emplaced_index_t<_Index-1>());
     }
 };
 
@@ -418,6 +428,12 @@ struct __indexed_variant_ops<__variant_indices<_Indices...>,_Types...>{
     __move_assign[sizeof...(_Indices)]={
         (&__ops::template __move_assign_func<_Indices>)...
     };
+
+    static constexpr
+    typename __ops::__unary_func_type
+    __destroy[sizeof...(_Indices)]={
+        (&__ops::template __destroy_func<_Indices>)...
+    };
 };
 
 template<ptrdiff_t ... _Indices,typename ... _Types>
@@ -438,6 +454,11 @@ __indexed_variant_ops<__variant_indices<_Indices...>,_Types...>::__copy_assign[
 template<ptrdiff_t ... _Indices,typename ... _Types>
 constexpr typename __variant_ops<_Types...>::__move_func_type
 __indexed_variant_ops<__variant_indices<_Indices...>,_Types...>::__move_assign[
+    sizeof...(_Indices)];
+
+template<ptrdiff_t ... _Indices,typename ... _Types>
+constexpr typename __variant_ops<_Types...>::__unary_func_type
+__indexed_variant_ops<__variant_indices<_Indices...>,_Types...>::__destroy[
     sizeof...(_Indices)];
 
 template<typename ... _Types>
@@ -477,9 +498,9 @@ struct __variant_ops{
         __other.__destroy_self();
     }
 
-    template<typename _Type>
+    template<ptrdiff_t _Index>
     static void __destroy_func(__variant_type* __self){
-        __stored_type<_Type>::__destroy(&__self->__storage);
+        __self->__storage.__destroy(emplaced_index_t<_Index>());
     }
     
     template<typename _Type>
@@ -511,9 +532,8 @@ struct __variant_ops{
     static constexpr __move_func_type __swap[sizeof...(_Types)]={
         &__swap_func<_Types>...
     };
-    static constexpr __unary_func_type __destroy[sizeof...(_Types)]={
-        &__destroy_func<_Types>...
-    };
+    static constexpr __unary_func_type (&__destroy)[sizeof...(_Types)]=
+        __indexed_variant_ops<__indices,_Types...>::__destroy;
     static constexpr __compare_func_type __equality_compare[sizeof...(_Types)]={
         &__equality_compare_func<_Types>...
     };
@@ -525,10 +545,6 @@ struct __variant_ops{
 template<typename ... _Types>
 constexpr typename __variant_ops<_Types...>::__move_func_type
 __variant_ops<_Types...>::__swap[sizeof...(_Types)];
-
-template<typename ... _Types>
-constexpr typename __variant_ops<_Types...>::__unary_func_type
-__variant_ops<_Types...>::__destroy[sizeof...(_Types)];
 
 template<typename ... _Types>
 constexpr typename __variant_ops<_Types...>::__compare_func_type
