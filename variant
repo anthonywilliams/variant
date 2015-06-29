@@ -1014,13 +1014,27 @@ constexpr bool holds_alternative(variant<_Types...> const& __v) noexcept{
 }
 
 template<typename _Visitor,typename ... _Types>
+struct __visitor_return_type;
+
+template<typename _Visitor>
+struct __visitor_return_type<_Visitor>{
+    typedef decltype(std::declval<_Visitor&>()()) __type;
+};
+
+template<typename _Visitor,typename _Head,typename ... _Rest>
+struct __visitor_return_type<_Visitor,_Head,_Rest...>{
+    typedef decltype(std::declval<_Visitor&>()(std::declval<_Head&>())) __type;
+};
+
+template<typename _Visitor,typename ... _Types>
 struct __visitor_table{
     typedef variant<_Types...> __variant_type;
-    typedef void(*__func_type)(_Visitor&,__variant_type&);
+    typedef typename __visitor_return_type<_Visitor,_Types...>::__type __return_type;
+    typedef __return_type (*__func_type)(_Visitor&,__variant_type&);
 
     template<typename _Type>
-    static void __trampoline_func(_Visitor& __visitor,__variant_type& __v){
-        __visitor(get<_Type>(__v));
+    static __return_type __trampoline_func(_Visitor& __visitor,__variant_type& __v){
+        return __visitor(get<_Type>(__v));
     }
 
     static constexpr __func_type __trampoline[sizeof...(_Types)]={
@@ -1032,10 +1046,11 @@ template<typename _Visitor,typename ... _Types>
 constexpr typename __visitor_table<_Visitor,_Types...>::__func_type __visitor_table<_Visitor,_Types...>::__trampoline[sizeof...(_Types)];
 
 template<typename _Visitor,typename ... _Types>
-void visit(_Visitor& __visitor,variant<_Types...>& __v){
+typename __visitor_return_type<_Visitor,_Types...>::__type
+visit(_Visitor&& __visitor,variant<_Types...>& __v){
     if(__v.empty())
         throw bad_variant_access("Visiting of empty variant");
-    __visitor_table<_Visitor,_Types...>::__trampoline[__v.index()](__visitor,__v);
+    return __visitor_table<_Visitor,_Types...>::__trampoline[__v.index()](__visitor,__v);
 }
 
 template<size_t _VariantIndex,typename _Indices>
@@ -1123,6 +1138,11 @@ struct __visit_helper<_VariantIndex,__index_sequence<_Indices...>>{
 
 template<typename _Visitor,typename ... _Variants>
 void visit(_Visitor& __visitor,_Variants& ... __v){
+    __visit_helper<sizeof...(_Variants),__index_sequence<>>::__visit(__visitor,__v...);
+}
+
+template<typename _Visitor,typename ... _Variants>
+void visit(_Visitor const& __visitor,_Variants& ... __v){
     __visit_helper<sizeof...(_Variants),__index_sequence<>>::__visit(__visitor,__v...);
 }
 

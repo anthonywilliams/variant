@@ -783,6 +783,11 @@ void assignment_with_conversion(){
     assert(se::get<1>(v)=="hello");
 }
 
+void visitor_with_non_void_return(){
+    se::variant<int> v(42);
+    assert(visit([](auto i){return i*2;},v)==84);
+}
+
 int main(){
     initial_is_empty();
     empty_index_is_neg_one();
@@ -837,4 +842,5 @@ int main(){
     reference_types_preferred_for_lvalue();
     construction_with_conversion();
     assignment_with_conversion();
+    visitor_with_non_void_return();
 }
