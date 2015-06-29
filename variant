@@ -385,6 +385,7 @@ struct __all_trivially_destructible<_Head,_Rest...> {
 template<ptrdiff_t... _Indices>
 struct __index_sequence{
     typedef __index_sequence<_Indices...,sizeof...(_Indices)> __next;
+    static constexpr size_t __length=sizeof...(_Indices);
 };
 
 template<typename ... _Types>
@@ -663,13 +664,20 @@ struct __all_indices{
         0,__index_sequence<>,_Type,_Types...>::__type __type;
 };
 
-template<typename _Sequence1,typename _Sequence2>
+template<typename ... _Sequences>
 struct __combine_sequences;
 
 template<ptrdiff_t ... _Indices1,ptrdiff_t ... _Indices2>
 struct __combine_sequences<
     __index_sequence<_Indices1...>,__index_sequence<_Indices2...>>{
     typedef __index_sequence<_Indices1...,_Indices2...> __type;
+};
+
+template<typename _Sequence,typename ... _Rest>
+struct __combine_sequences<_Sequence,_Rest...>{
+    typedef typename __combine_sequences<
+        _Sequence,
+        typename __combine_sequences<_Rest...>::__type>::__type __type;
 };
 
 template<typename _Indices>
@@ -680,6 +688,47 @@ struct __first_index<__index_sequence<_FirstIndex,_Rest...>>{
     static constexpr ptrdiff_t __value=_FirstIndex;
 };
 
+template<ptrdiff_t _Offset,typename _CurrentSequence,
+         typename _Type,typename ... _Types>
+struct __constructible_matches_helper;
+
+template<ptrdiff_t _Offset,typename _Sequence,typename _Type>
+struct __constructible_matches_helper<
+    _Offset,_Sequence,_Type>{
+    typedef _Sequence __type;
+};
+
+template<bool _Accept,ptrdiff_t _Entry>
+struct __sequence_or_empty{
+    typedef __index_sequence<> __type;
+};
+
+template<ptrdiff_t _Entry>
+struct __sequence_or_empty<true,_Entry>{
+    typedef __index_sequence<_Entry> __type;
+};
+
+template<ptrdiff_t _Offset,typename _CurrentSequence,
+         typename _Type,typename _Head,typename ... _Rest>
+struct __constructible_matches_helper<
+    _Offset,_CurrentSequence,_Type,_Head,_Rest...>{
+    typedef
+    typename __constructible_matches_helper<
+        _Offset+1,
+        typename __combine_sequences<
+            _CurrentSequence,
+            typename __sequence_or_empty<
+                std::is_constructible<_Head,_Type>::value,
+                _Offset>::__type>::__type,
+        _Type,_Rest...>::__type __type;
+};
+
+template<typename _Type,typename ... _Types>
+struct __constructible_matches{
+    typedef typename __constructible_matches_helper<
+        0,__index_sequence<>,_Type,_Types...>::__type __type;
+};
+
 template<typename _Type,typename ... _Types>
 struct __type_index_to_construct{
     typedef typename __all_indices<_Type,_Types...>::__type __direct_matches;
@@ -687,8 +736,19 @@ struct __type_index_to_construct{
         typename std::remove_const<
             typename std::remove_reference<_Type>::type
             >::type,_Types...>::__type __value_matches;
+
+    typedef typename __constructible_matches<_Type,_Types...>::__type
+    __constructibles;
+
+    static_assert(
+        (__direct_matches::__length>0) ||
+        (__value_matches::__length>0) ||
+        (__constructibles::__length==1),
+        "For conversion construction of variants, exactly one type must be constructible");
+    
     typedef typename __combine_sequences<
-        __direct_matches,__value_matches>::__type __all_matches;
+        __direct_matches,__value_matches,
+        __constructibles>::__type __all_matches;
     
     static constexpr ptrdiff_t __value=__first_index<__all_matches>::__value;
 };
