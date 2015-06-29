@@ -397,28 +397,6 @@ struct __type_indices<_Type,_Rest...>{
     typedef typename __type_indices<_Rest...>::__type::__next __type;
 };
 
-template<typename _Indices,typename ... _Types>
-struct __indexed_variant_ops;
-
-template<typename ... _Types>
-struct __variant_ops;
-
-template<ptrdiff_t ... _Indices,typename ... _Types>
-struct __indexed_variant_ops<__index_sequence<_Indices...>,_Types...>{
-    typedef __variant_ops<_Types...> __ops;
-
-    static constexpr
-    typename __ops::__unary_func_type
-    __destroy[sizeof...(_Indices)]={
-        (&__ops::template __destroy_func<_Indices>)...
-    };
-};
-
-template<ptrdiff_t ... _Indices,typename ... _Types>
-constexpr typename __variant_ops<_Types...>::__unary_func_type
-__indexed_variant_ops<__index_sequence<_Indices...>,_Types...>::__destroy[
-    sizeof...(_Indices)];
-
 template<typename _Variant>
 struct __variant_indices;
 
@@ -531,6 +509,31 @@ __copy_assign_op_table<_Variant,__index_sequence<_Indices...>>::__apply[
 
 template<typename _Variant,
          typename _Indices=typename __variant_indices<_Variant>::__type>
+struct __destroy_op_table;
+
+template<typename _Variant,ptrdiff_t ... _Indices>
+struct __destroy_op_table<_Variant,__index_sequence<_Indices...>>{
+    typedef void(* const __func_type)(_Variant*);
+    
+    template<ptrdiff_t _Index>
+    static void __destroy_func(
+        _Variant * __self){
+        __self->__storage.__destroy(emplaced_index_t<_Index>());
+    }
+
+    static constexpr __func_type __apply[sizeof...(_Indices)]={
+        &__destroy_func<_Indices>...
+    };
+};
+
+template<typename _Variant,ptrdiff_t ... _Indices>
+constexpr typename __destroy_op_table<_Variant,__index_sequence<_Indices...>>::
+__func_type
+__destroy_op_table<_Variant,__index_sequence<_Indices...>>::__apply[
+    sizeof...(_Indices)];
+
+template<typename _Variant,
+         typename _Indices=typename __variant_indices<_Variant>::__type>
 struct __equality_op_table;
 
 template<typename _Variant,ptrdiff_t ... _Indices>
@@ -584,14 +587,8 @@ struct __variant_ops{
     typedef typename __type_indices<_Types...>::__type __indices;
     typedef variant<_Types...> __variant_type;
     typedef typename variant<_Types...>::__storage_type __storage_type;
-    typedef void(* const __unary_func_type)(__variant_type*);
     typedef void(* const __swap_func_type)(__variant_type*,__variant_type&);
 
-    template<ptrdiff_t _Index>
-    static void __destroy_func(__variant_type* __self){
-        __self->__storage.__destroy(emplaced_index_t<_Index>());
-    }
-    
     template<typename _Type>
     static void __swap_func(
         __variant_type* __self,__variant_type& __other){
@@ -601,8 +598,6 @@ struct __variant_ops{
     static constexpr __swap_func_type __swap[sizeof...(_Types)]={
         &__swap_func<_Types>...
     };
-    static constexpr __unary_func_type (&__destroy)[sizeof...(_Types)]=
-        __indexed_variant_ops<__indices,_Types...>::__destroy;
 };
 
 template<typename ... _Types>
@@ -633,6 +628,7 @@ class variant: private __variant_base<variant<_Types...>,__all_trivially_destruc
     friend struct __copy_assign_op_table<variant>;
     friend struct __move_construct_op_table<variant>;
     friend struct __move_assign_op_table<variant>;
+    friend struct __destroy_op_table<variant>;
     
     template<ptrdiff_t _Index,typename ... _Types2>
     friend struct __variant_accessor;
@@ -653,7 +649,7 @@ class variant: private __variant_base<variant<_Types...>,__all_trivially_destruc
             return;
         ptrdiff_t const __old_index=__index;
         __index=-1;
-        __variant_ops<_Types...>::__destroy[__old_index](this);
+        __destroy_op_table<variant>::__apply[__old_index](this);
     }
     
     ptrdiff_t __move_construct(variant& __other){
