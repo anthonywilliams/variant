@@ -5,8 +5,8 @@ ifdef CLANG
 CC=clang++-3.7
 CXX=clang++-3.7
 else
-CC=g++
-CXX=g++
+CC=g++-5
+CXX=g++-5
 endif
 LDFLAGS=-g -O2
 
