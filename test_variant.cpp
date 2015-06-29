@@ -4,6 +4,8 @@
 #include <vector>
 #include <memory>
 #include <iostream>
+#include <array>
+#include <tuple>
 
 namespace se=std::experimental;
 
@@ -702,6 +704,22 @@ void sizes(){
     std::cout<<"std::pair<int,int>:"<<sizeof(std::pair<int,int>)<<std::endl;
     std::cout<<"variant<char,std::pair<char,char>>:"<<sizeof(se::variant<char,std::pair<char,char>>)<<std::endl;
     std::cout<<"std::pair<char,char>:"<<sizeof(std::pair<char,char>)<<std::endl;
+std::cout<<"variant<char,std::pair<double,char>>:"<<sizeof(se::variant<char,std::pair<double,char>>)<<std::endl;
+    std::cout<<"std::pair<double,char>:"<<sizeof(std::pair<double,char>)<<std::endl;
+    std::cout<<"variant<double,std::tuple<int,int,int>>:"<<sizeof(se::variant<double,std::tuple<int,int,int>>)<<std::endl;
+    std::cout<<"std::tuple<int,int,int>:"<<sizeof(std::tuple<int,int,int>)<<std::endl;
+}
+
+void duplicate_types(){
+    se::variant<int,int> v(42);
+    assert(se::get<int>(v)==42);
+    assert(v.index()==0);
+    assert(se::get<0>(v)==42);
+
+    se::variant<int,int> v2(se::emplaced_index_t<1>(),42);
+    assert(v2.index()==1);
+    assert(se::get<1>(v2)==42);
+    // assert(se::get<int>(v2)==42);
 }
 
 int main(){
@@ -750,4 +768,5 @@ int main(){
     constexpr_variant();
     multivisitor();
     sizes();
+    duplicate_types();
 }
