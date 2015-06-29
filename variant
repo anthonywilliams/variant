@@ -816,14 +816,89 @@ struct __variant_accessor{
     }
 };
 
+template<ptrdiff_t _Offset,typename _CurrentSequence,
+         typename _Type,typename ... _Types>
+struct __all_indices_helper;
+
+template<ptrdiff_t _Offset,ptrdiff_t ... _Indices,
+         typename _Type,typename ... _Rest>
+struct __all_indices_helper<
+    _Offset,__index_sequence<_Indices...>,
+    _Type,_Type,_Rest...>{
+    typedef typename __all_indices_helper<
+        _Offset+1,__index_sequence<_Indices...,_Offset>,_Type,_Rest...>::__type
+        __type;
+};
+
+template<ptrdiff_t _Offset,typename _CurrentSequence,
+         typename _Type,typename _Head,typename ... _Rest>
+struct __all_indices_helper<_Offset,_CurrentSequence,_Type,_Head,_Rest...>{
+    typedef typename __all_indices_helper<
+        _Offset+1,_CurrentSequence,_Type,_Rest...>::__type __type;
+};
+
+template<ptrdiff_t _Offset,typename _CurrentSequence,typename _Type>
+struct __all_indices_helper<_Offset,_CurrentSequence,_Type>{
+    typedef _CurrentSequence __type;
+};
+
+template<typename _Type,typename ... _Types>
+struct __all_indices{
+    typedef typename __all_indices_helper<
+        0,__index_sequence<>,_Type,_Types...>::__type __type;
+};
+
+template<typename _Indices,typename _Type,typename _Variant>
+struct __get_by_type_helper;
+
+template<typename _Variant>
+struct __get_by_type_helper<__index_sequence<>,empty_t,_Variant>{
+    static constexpr empty_t& __get(_Variant& __v){
+        return get<-1>(__v);
+    }
+    static constexpr const empty_t& __get(const _Variant& __v){
+        return get<-1>(__v);
+    }
+};
+
+template<typename _Type,typename _Variant>
+struct __get_by_type_helper<__index_sequence<>,_Type,_Variant>{
+    static _Type& __get(_Variant& __v){
+        throw bad_variant_access("Bad variant type in get");
+    }
+    static const _Type& __get(_Variant const& __v){
+        throw bad_variant_access("Bad variant type in get");
+    }
+};
+
+template<ptrdiff_t _FirstIndex,ptrdiff_t ... _OtherIndices,
+         typename _Type,typename _Variant>
+struct __get_by_type_helper<
+    __index_sequence<_FirstIndex,_OtherIndices...>,_Type,_Variant>{
+    static constexpr _Type& __get(_Variant& __v){
+        return (__v.index()==_FirstIndex)?
+            get<_FirstIndex>(__v):
+            __get_by_type_helper<
+            __index_sequence<_OtherIndices...>,_Type,_Variant>::__get(__v);
+    }
+    static constexpr const _Type& __get(const _Variant& __v){
+        return (__v.index()==_FirstIndex)?
+            get<_FirstIndex>(__v):
+            __get_by_type_helper<
+            __index_sequence<_OtherIndices...>,_Type,_Variant>::__get(__v);
+    }
+};
+
 template<typename _Type,typename ... _Types>
 constexpr _Type& get(variant<_Types...>& __v){
-    return get<__type_index<_Type,_Types...>::__value>(__v);
+    typedef typename __all_indices<_Type,_Types...>::__type __all_matches;
+    return __get_by_type_helper<__all_matches,_Type,variant<_Types...>>::__get(__v);
 }
 
 template<typename _Type,typename ... _Types>
 constexpr _Type const& get(variant<_Types...> const& __v){
-    return get<__type_index<_Type,_Types...>::__value>(__v);
+    typedef typename __all_indices<_Type,_Types...>::__type __all_matches;
+    return __get_by_type_helper<__all_matches,_Type,variant<_Types...>>::__get(__v);
 }
 
 template<ptrdiff_t _Index,typename ... _Types>

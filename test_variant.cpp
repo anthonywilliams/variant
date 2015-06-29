@@ -719,7 +719,7 @@ void duplicate_types(){
     se::variant<int,int> v2(se::emplaced_index_t<1>(),42);
     assert(v2.index()==1);
     assert(se::get<1>(v2)==42);
-    // assert(se::get<int>(v2)==42);
+    assert(se::get<int>(v2)==42);
 }
 
 int main(){
