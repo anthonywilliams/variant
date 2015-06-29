@@ -770,8 +770,15 @@ void reference_types_preferred_for_lvalue(){
     assert(v2.index()==0);
 }
 
-void construction_of_best_match(){
+void construction_with_conversion(){
     se::variant<int,std::string> v("hello");
+    assert(v.index()==1);
+    assert(se::get<1>(v)=="hello");
+}
+
+void assignment_with_conversion(){
+    se::variant<int,std::string> v;
+    v="hello";
     assert(v.index()==1);
     assert(se::get<1>(v)=="hello");
 }
@@ -828,5 +835,6 @@ int main(){
     can_emplace_empty_by_index();
     direct_init_reference_member();
     reference_types_preferred_for_lvalue();
-    construction_of_best_match();
+    construction_with_conversion();
+    assignment_with_conversion();
 }
