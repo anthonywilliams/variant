@@ -494,6 +494,31 @@ __compare_func_type
 __equality_op_table<_Variant,__index_sequence<_Indices...>>::__equality_compare[
     sizeof...(_Indices)];
 
+template<typename _Variant,
+         typename _Indices=typename __variant_indices<_Variant>::__type>
+struct __less_than_op_table;
+
+template<typename _Variant,ptrdiff_t ... _Indices>
+struct __less_than_op_table<_Variant,__index_sequence<_Indices...>>{
+    typedef bool(* const __compare_func_type)(_Variant const&,_Variant const&);
+    
+    template<ptrdiff_t _Index>
+    static bool __less_than_compare_func(
+        _Variant const& __lhs,_Variant const& __rhs){
+        return get<_Index>(__lhs)<get<_Index>(__rhs);
+    }
+
+    static constexpr __compare_func_type __less_than_compare[sizeof...(_Indices)]={
+        &__less_than_compare_func<_Indices>...
+    };
+};
+
+template<typename _Variant,ptrdiff_t ... _Indices>
+constexpr typename __less_than_op_table<_Variant,__index_sequence<_Indices...>>::
+__compare_func_type
+__less_than_op_table<_Variant,__index_sequence<_Indices...>>::__less_than_compare[
+    sizeof...(_Indices)];
+
 template<typename ... _Types>
 struct __variant_ops{
     typedef typename __type_indices<_Types...>::__type __indices;
@@ -502,7 +527,6 @@ struct __variant_ops{
     typedef void(* const __copy_func_type)(__variant_type*,__variant_type const&);
     typedef void(* const __move_func_type)(__variant_type*,__variant_type&);
     typedef void(* const __unary_func_type)(__variant_type*);
-    typedef bool(* const __compare_func_type)(__variant_type const&,__variant_type const&);
 
     template<ptrdiff_t _Index>
     static void __copy_construct_func(
@@ -542,12 +566,6 @@ struct __variant_ops{
         swap(get<_Type>(*__self),get<_Type>(__other));
     }
 
-    template<typename _Type>
-    static bool __less_than_compare_func(
-        __variant_type const& __lhs,__variant_type const& __rhs){
-        return get<_Type>(__lhs)<get<_Type>(__rhs);
-    }
-
     static constexpr __copy_func_type (&__copy_construct)[sizeof...(_Types)]=
         __indexed_variant_ops<__indices,_Types...>::__copy_construct;
     static constexpr __move_func_type (&__move_construct)[sizeof...(_Types)]=
@@ -561,18 +579,11 @@ struct __variant_ops{
     };
     static constexpr __unary_func_type (&__destroy)[sizeof...(_Types)]=
         __indexed_variant_ops<__indices,_Types...>::__destroy;
-    static constexpr __compare_func_type __less_than_compare[sizeof...(_Types)]={
-        &__less_than_compare_func<_Types>...
-    };
 };
 
 template<typename ... _Types>
 constexpr typename __variant_ops<_Types...>::__move_func_type
 __variant_ops<_Types...>::__swap[sizeof...(_Types)];
-
-template<typename ... _Types>
-constexpr typename __variant_ops<_Types...>::__compare_func_type
-__variant_ops<_Types...>::__less_than_compare[sizeof...(_Types)];
 
 template<typename _Variant>
 struct __variant_storage_type;
@@ -937,7 +948,8 @@ bool operator<(variant<_Types...> const& __lhs,variant<_Types...> const& __rhs){
     return (__lhs.index()<__rhs.index()) ||
         ((__lhs.index()==__rhs.index()) &&
          ((__lhs.index()!=-1) &&
-         __variant_ops<_Types...>::__less_than_compare[__lhs.index()](__lhs,__rhs)));
+          __less_than_op_table<variant<_Types...>>::
+          __less_than_compare[__lhs.index()](__lhs,__rhs)));
 }
 
 template<typename ... _Types>
