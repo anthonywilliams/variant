@@ -426,11 +426,22 @@ struct __indexed_variant_ops<__variant_indices<_Indices...>,_Types...>{
     __copy_construct[sizeof...(_Indices)]={
         (&__ops::template __copy_construct_func<_Indices>)...
     };
+
+    static constexpr
+    typename __ops::__move_func_type
+    __move_construct[sizeof...(_Indices)]={
+        (&__ops::template __move_construct_func<_Indices>)...
+    };
 };
 
 template<ptrdiff_t ... _Indices,typename ... _Types>
 constexpr typename __variant_ops<_Types...>::__copy_func_type
 __indexed_variant_ops<__variant_indices<_Indices...>,_Types...>::__copy_construct[
+    sizeof...(_Indices)];
+
+template<ptrdiff_t ... _Indices,typename ... _Types>
+constexpr typename __variant_ops<_Types...>::__move_func_type
+__indexed_variant_ops<__variant_indices<_Indices...>,_Types...>::__move_construct[
     sizeof...(_Indices)];
 
 template<typename ... _Types>
@@ -450,12 +461,11 @@ struct __variant_ops{
             emplaced_index_t<_Index>(),get<_Index>(__other));
     }
 
-    template<typename _Type>
+    template<ptrdiff_t _Index>
     static void __move_construct_func(
         __variant_type* __self,__variant_type& __other){
-        __stored_type<_Type>::__construct(
-            &__self->__storage,
-            std::move(__stored_type<_Type>::__get(&__other.__storage)));
+        new(&__self->__storage) __storage_type(
+            emplaced_index_t<_Index>(),std::move(get<_Index>(__other)));
     }
     
     template<typename _Type>
@@ -494,13 +504,10 @@ struct __variant_ops{
         return get<_Type>(__lhs)<get<_Type>(__rhs);
     }
 
-    typedef __copy_func_type (&__copy_construct_table_type)[sizeof...(_Types)];
-    
-    static constexpr __copy_construct_table_type __copy_construct=
+    static constexpr __copy_func_type (&__copy_construct)[sizeof...(_Types)]=
         __indexed_variant_ops<__indices,_Types...>::__copy_construct;
-    static constexpr __move_func_type __move_construct[sizeof...(_Types)]={
-        &__move_construct_func<_Types>...
-    };
+    static constexpr __move_func_type (&__move_construct)[sizeof...(_Types)]=
+        __indexed_variant_ops<__indices,_Types...>::__move_construct;
     static constexpr __copy_func_type __copy_assign[sizeof...(_Types)]={
         &__copy_assign_func<_Types>...
     };
@@ -520,10 +527,6 @@ struct __variant_ops{
         &__less_than_compare_func<_Types>...
     };
 };
-
-template<typename ... _Types>
-constexpr typename __variant_ops<_Types...>::__move_func_type
-__variant_ops<_Types...>::__move_construct[sizeof...(_Types)];
 
 template<typename ... _Types>
 constexpr typename __variant_ops<_Types...>::__copy_func_type
