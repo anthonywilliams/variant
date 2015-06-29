@@ -761,6 +761,15 @@ void direct_init_reference_member(){
     assert(&se::get<int&>(v)==&i);
 }
 
+void reference_types_preferred_for_lvalue(){
+    int i=42;
+    se::variant<int,int&> v(i);
+    assert(v.index()==1);
+
+    se::variant<int> v2(42);
+    assert(v2.index()==0);
+}
+
 int main(){
     initial_is_empty();
     empty_index_is_neg_one();
@@ -812,4 +821,5 @@ int main(){
     can_emplace_empty();
     can_emplace_empty_by_index();
     direct_init_reference_member();
+    reference_types_preferred_for_lvalue();
 }
