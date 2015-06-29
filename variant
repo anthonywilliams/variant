@@ -41,6 +41,7 @@
 #include <type_traits>
 #include <new>
 #include <utility>
+#include <limits.h>
 
 namespace std{
 namespace experimental{
@@ -138,9 +139,26 @@ constexpr typename __indexed_type<_Index,_Types...>::__type const& get(
 template<ptrdiff_t _Index,typename ... _Types>
 struct __variant_accessor;
 
-template<size_t __count>
-struct __descriminator_type{
+template<size_t __count,
+         bool __larger_than_char=(__count>SCHAR_MAX),
+    bool __larger_than_short=(__count>SHRT_MAX),
+    bool __larger_than_int=(__count>INT_MAX)>
+struct __discriminator_type{
     typedef signed char __type;
+};
+
+template<size_t __count>
+struct __discriminator_type<__count,true,false,false>{
+    typedef signed short __type;
+};
+
+template<size_t __count>
+struct __discriminator_type<__count,true,true,false>{
+    typedef int __type;
+};
+template<size_t __count>
+struct __discriminator_type<__count,true,true,true>{
+    typedef signed long __type;
 };
 
 template<typename _Type>
@@ -492,7 +510,7 @@ class variant: private __variant_base<variant<_Types...>,__all_trivially_destruc
     friend struct __variant_accessor;
 
     __variant_data<_Types...> __storage;
-    typename __descriminator_type<sizeof ... (_Types)>::__type __index;
+    typename __discriminator_type<sizeof ... (_Types)>::__type __index;
 
     template<typename _Type,typename ... _Args>
     ptrdiff_t __emplace_construct(_Args&& ... __args){
