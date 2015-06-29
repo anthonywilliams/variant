@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <iostream>
 
 namespace se=std::experimental;
 
@@ -687,6 +688,22 @@ void multivisitor(){
     catch(se::bad_variant_access){}
 }
 
+void sizes(){
+    std::cout<<"empty_t:"<<sizeof(se::empty_t)<<std::endl;
+    std::cout<<"variant<>:"<<sizeof(se::variant<>)<<std::endl;
+    std::cout<<"variant<char>:"<<sizeof(se::variant<char>)<<std::endl;
+    std::cout<<"variant<int>:"<<sizeof(se::variant<int>)<<std::endl;
+    std::cout<<"int:"<<sizeof(int)<<std::endl;
+    std::cout<<"variant<double>:"<<sizeof(se::variant<double>)<<std::endl;
+    std::cout<<"double:"<<sizeof(double)<<std::endl;
+    std::cout<<"variant<std::string>:"<<sizeof(se::variant<std::string>)<<std::endl;
+    std::cout<<"std::string:"<<sizeof(std::string)<<std::endl;
+    std::cout<<"variant<std::pair<int,int>>:"<<sizeof(se::variant<std::pair<int,int>>)<<std::endl;
+    std::cout<<"std::pair<int,int>:"<<sizeof(std::pair<int,int>)<<std::endl;
+    std::cout<<"variant<std::pair<char,char>>:"<<sizeof(se::variant<std::pair<char,char>>)<<std::endl;
+    std::cout<<"std::pair<char,char>:"<<sizeof(std::pair<char,char>)<<std::endl;
+}
+
 int main(){
     initial_is_empty();
     empty_index_is_neg_one();
@@ -732,4 +749,5 @@ int main(){
     less_than();
     constexpr_variant();
     multivisitor();
+    sizes();
 }
