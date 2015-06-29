@@ -534,6 +534,31 @@ __destroy_op_table<_Variant,__index_sequence<_Indices...>>::__apply[
 
 template<typename _Variant,
          typename _Indices=typename __variant_indices<_Variant>::__type>
+struct __swap_op_table;
+
+template<typename _Variant,ptrdiff_t ... _Indices>
+struct __swap_op_table<_Variant,__index_sequence<_Indices...>>{
+    typedef void(* const __func_type)(_Variant&,_Variant&);
+    
+    template<ptrdiff_t _Index>
+    static void __swap_func(
+        _Variant & __lhs,_Variant & __rhs){
+        swap(get<_Index>(__lhs),get<_Index>(__rhs));
+    }
+
+    static constexpr __func_type __apply[sizeof...(_Indices)]={
+        &__swap_func<_Indices>...
+    };
+};
+
+template<typename _Variant,ptrdiff_t ... _Indices>
+constexpr typename __swap_op_table<_Variant,__index_sequence<_Indices...>>::
+__func_type
+__swap_op_table<_Variant,__index_sequence<_Indices...>>::__apply[
+    sizeof...(_Indices)];
+
+template<typename _Variant,
+         typename _Indices=typename __variant_indices<_Variant>::__type>
 struct __equality_op_table;
 
 template<typename _Variant,ptrdiff_t ... _Indices>
@@ -582,28 +607,6 @@ __compare_func_type
 __less_than_op_table<_Variant,__index_sequence<_Indices...>>::__less_than_compare[
     sizeof...(_Indices)];
 
-template<typename ... _Types>
-struct __variant_ops{
-    typedef typename __type_indices<_Types...>::__type __indices;
-    typedef variant<_Types...> __variant_type;
-    typedef typename variant<_Types...>::__storage_type __storage_type;
-    typedef void(* const __swap_func_type)(__variant_type*,__variant_type&);
-
-    template<typename _Type>
-    static void __swap_func(
-        __variant_type* __self,__variant_type& __other){
-        swap(get<_Type>(*__self),get<_Type>(__other));
-    }
-
-    static constexpr __swap_func_type __swap[sizeof...(_Types)]={
-        &__swap_func<_Types>...
-    };
-};
-
-template<typename ... _Types>
-constexpr typename __variant_ops<_Types...>::__swap_func_type
-__variant_ops<_Types...>::__swap[sizeof...(_Types)];
-
 template<typename _Variant>
 struct __variant_storage_type;
 
@@ -623,7 +626,6 @@ template<typename ... _Types>
 class variant: private __variant_base<variant<_Types...>,__all_trivially_destructible<_Types...>::__value>{
     typedef __variant_base<variant<_Types...>,__all_trivially_destructible<_Types...>::__value> __base_type;
     friend __base_type;
-    friend struct __variant_ops<_Types...>;
     friend struct __copy_construct_op_table<variant>;
     friend struct __copy_assign_op_table<variant>;
     friend struct __move_construct_op_table<variant>;
@@ -795,7 +797,7 @@ public:
     void swap(variant& __other){
         if(__other.__index==__index){
             if(__index!=-1)
-                __variant_ops<_Types...>::__swap[__index](this,__other);
+                __swap_op_table<variant>::__apply[__index](*this,__other);
         }
         else{
             std::swap(*this,__other);
