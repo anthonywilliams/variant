@@ -842,6 +842,19 @@ public:
         __index(__type_index_to_construct<_Type,_Types...>::__value)
     {}
 
+    template<typename _Type,
+             typename _Enable=
+             typename std::enable_if<
+                 (__constructible_matches<std::initializer_list<_Type>,_Types...>::__type::__length>0)
+             >::type>
+    constexpr variant(std::initializer_list<_Type> __x):
+        __storage(
+            emplaced_index_t<
+            __type_index_to_construct<std::initializer_list<_Type>,_Types...>::__value>(),
+            __x),
+        __index(__type_index_to_construct<std::initializer_list<_Type>,_Types...>::__value)
+    {}
+    
     template<typename _Type>
     variant& operator=(_Type&& __x){
         constexpr ptrdiff_t _Index=

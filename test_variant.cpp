@@ -795,6 +795,12 @@ void multi_visitor_with_non_void_return(){
     assert(visit([](auto i,auto j){return i+j;},v,v2)==46.2);
 }
 
+void initialization_with_initializer_list(){
+    se::variant<std::vector<int>> v{1,2,3,4};
+    assert(v.index()==0);
+    assert(se::get<0>(v).size()==4);
+}
+
 int main(){
     initial_is_empty();
     empty_index_is_neg_one();
@@ -851,4 +857,5 @@ int main(){
     assignment_with_conversion();
     visitor_with_non_void_return();
     multi_visitor_with_non_void_return();
+    initialization_with_initializer_list();
 }
