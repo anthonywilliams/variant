@@ -805,28 +805,6 @@ struct __type_index_to_construct{
     static constexpr ptrdiff_t __value=__first_index<__all_matches>::__value;
 };
 
-template<
-    size_t _Index,
-    typename _Type,
-    bool=__storage_nothrow_move_constructible<_Type>::__value>
-struct __backup_storage_impl{};
-
-template<size_t _Index,typename _Type>
-struct __backup_storage_impl<_Index,_Type,false>{
-    __variant_data<_Type> __backup;
-};
-
-template<size_t _Index,typename ... _Types>
-struct __backup_storage;
-
-template<size_t _Index>
-struct __backup_storage<_Index>{};
-
-template<size_t _Index,typename _Head,typename ... _Rest>
-struct __backup_storage<_Index,_Head,_Rest...>:
-        __backup_storage_impl<_Index,_Head>,
-    __backup_storage<_Index+1,_Rest...>{};
-
 struct __replace_construct_helper{
     template<
         ptrdiff_t _Index,
@@ -889,6 +867,102 @@ struct __replace_construct_helper::__helper<
         __v.template __backup_replace<_Index>(std::forward<_Args>(__args)...);
     }
 };
+
+template<ptrdiff_t _Index,ptrdiff_t _MaskIndex,typename _Storage>
+struct __backup_storage_ops{
+    static void __move_construct_func(
+        _Storage * __dest,_Storage& __source){
+        new(__dest) _Storage(
+            emplaced_index_t<_Index>(),
+            std::move(__source.__get(emplaced_index_t<_Index>())));
+    }
+    static void __destroy_func(_Storage * __obj){
+        __obj->__destroy(emplaced_index_t<_Index>());
+    };
+};
+
+template<ptrdiff_t _Index,typename _Storage>
+struct __backup_storage_ops<_Index,_Index,_Storage>{
+    static void __move_construct_func(
+        _Storage * __dest,_Storage& __source){
+        throw std::bad_alloc();
+    };
+    static void __destroy_func(_Storage * __obj){
+        throw std::bad_alloc();
+    };
+};
+
+template<ptrdiff_t _MaskIndex,typename _Storage,typename _Indices>
+struct __backup_storage_op_table;
+
+template<ptrdiff_t _MaskIndex,typename _Storage,ptrdiff_t ... _Indices>
+struct __backup_storage_op_table<
+    _MaskIndex,_Storage,__index_sequence<_Indices...> >
+{
+    typedef void (*__move_func_type)(_Storage * __dest,_Storage& __source);
+    typedef void (*__destroy_func_type)(_Storage * __obj);
+    
+    template<size_t _Index>
+    struct __helper{
+        typedef __backup_storage_ops<_Index,_MaskIndex,_Storage> __ops;
+    };
+
+    static constexpr __move_func_type __move_ops[sizeof...(_Indices)]={
+        &__helper<_Indices>::__ops::__move_construct_func...
+    };
+    static constexpr __destroy_func_type __destroy_ops[sizeof...(_Indices)]={
+        &__helper<_Indices>::__ops::__destroy_func...
+    };
+};
+
+template<ptrdiff_t _MaskIndex,typename _Storage,ptrdiff_t ... _Indices>
+constexpr typename __backup_storage_op_table<
+    _MaskIndex,_Storage,__index_sequence<_Indices...> >::__move_func_type
+__backup_storage_op_table<
+    _MaskIndex,_Storage,__index_sequence<_Indices...> >::__move_ops[
+        sizeof...(_Indices)];
+
+template<ptrdiff_t _MaskIndex,typename _Storage,ptrdiff_t ... _Indices>
+constexpr typename __backup_storage_op_table<
+    _MaskIndex,_Storage,__index_sequence<_Indices...> >::__destroy_func_type
+__backup_storage_op_table<
+    _MaskIndex,_Storage,__index_sequence<_Indices...> >::__destroy_ops[
+    sizeof...(_Indices)];
+
+template<ptrdiff_t _Index,typename ... _Types>
+struct __backup_storage{
+    typedef __variant_data<_Types...> __storage_type;
+
+    typedef __backup_storage_op_table<
+        _Index,__storage_type,typename __type_indices<_Types...>::__type>
+    __op_table_type;
+
+    ptrdiff_t __backup_index;
+    __storage_type& __live_storage;
+    __storage_type __backup;
+
+    __backup_storage(ptrdiff_t __live_index_,__storage_type& __live_storage_):
+        __backup_index(__live_index_),__live_storage(__live_storage_){
+        __op_table_type::__move_ops[__backup_index](
+            &__backup,__live_storage);
+        __op_table_type::__destroy_ops[__backup_index](
+            &__live_storage);
+    }
+    void __destroy(){
+        __op_table_type::__destroy_ops[__backup_index](
+            &__backup);
+        __backup_index=-1;
+    }
+    
+    ~__backup_storage(){
+        if(__backup_index>=0){
+            __op_table_type::__move_ops[__backup_index](
+                &__live_storage,__backup);
+            __destroy();
+        }
+    }
+};
+
 
 template<typename ... _Types>
 class variant:
@@ -975,15 +1049,11 @@ class variant:
     template<ptrdiff_t _Index,typename ... _Args>
     void __local_backup_replace(_Args&& ... __args){
         std::cout<<"local backup replace "<<_Index<<"="<<typeid(typename __indexed_type<_Index,_Types...>::__type).name()<<std::endl;
-        variant __local(std::move(*this));
-        try{
-            __emplace_construct<_Index>(std::forward<_Args>(__args)...);
-            __index=_Index;
-        }
-        catch(...){
-            (*this)=std::move(__local);
-            throw;
-        }
+
+        __backup_storage<_Index,_Types...> __backup(__index,__storage);
+        __emplace_construct<_Index>(std::forward<_Args>(__args)...);
+        __index=_Index;
+        __backup.__destroy();
     }
     
     template<ptrdiff_t _Index,typename ... _Args>

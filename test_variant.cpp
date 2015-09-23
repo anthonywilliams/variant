@@ -851,6 +851,13 @@ void throwing_assign_from_type_leaves_variant_unchanged(){
     assert(se::get<1>(v)=="hello");
 }
 
+void can_emplace_nonmovable_type_when_other_nothrow_movable(){
+    std::cout<<__FUNCTION__<<std::endl;
+    se::variant<std::string,NonMovable> v{"hello"};
+    v.emplace<1>();
+    assert(v.index()==1);
+}
+
 int main(){
     initial_is_empty();
     empty_index_is_neg_one();
@@ -912,4 +919,5 @@ int main(){
     nothrow_assign_to_variant_holding_type_with_throwing_move_ok();
     maybe_throw_assign_to_variant_holding_type_with_throwing_move_ok();
     throwing_assign_from_type_leaves_variant_unchanged();
+    can_emplace_nonmovable_type_when_other_nothrow_movable();
 }
