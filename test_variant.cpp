@@ -823,12 +823,20 @@ void json(){
     JSON v5{vector_type{1,2,"hello"}};
 }
 
-void assign_to_variant_holding_type_with_throwing_move_ok(){
+void nothrow_assign_to_variant_holding_type_with_throwing_move_ok(){
     std::cout<<__FUNCTION__<<std::endl;
     se::variant<ThrowingCopy,int> v{se::emplaced_index_t<0>()};
     v=42;
     assert(v.index()==1);
     assert(se::get<1>(v)==42);
+}
+
+void maybe_throw_assign_to_variant_holding_type_with_throwing_move_ok(){
+    std::cout<<__FUNCTION__<<std::endl;
+    se::variant<ThrowingCopy,std::string> v{se::emplaced_index_t<0>()};
+    v="hello";
+    assert(v.index()==1);
+    assert(se::get<1>(v)=="hello");
 }
 
 int main(){
@@ -889,5 +897,6 @@ int main(){
     multi_visitor_with_non_void_return();
     initialization_with_initializer_list();
     json();
-    assign_to_variant_holding_type_with_throwing_move_ok();
+    nothrow_assign_to_variant_holding_type_with_throwing_move_ok();
+    maybe_throw_assign_to_variant_holding_type_with_throwing_move_ok();
 }
