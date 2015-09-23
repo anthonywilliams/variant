@@ -607,7 +607,12 @@ struct __destroy_op_table<_Variant,__index_sequence<_Indices...>>{
     template<ptrdiff_t _Index>
     static void __destroy_func(
         _Variant * __self){
-        __self->__storage.__destroy(emplaced_index_t<_Index>());
+        if(__self->__index>=0){
+            __self->__storage.__destroy(emplaced_index_t<_Index>());
+        }
+        else if(__self->__index<-1){
+            __self->__alt_destroy(emplaced_index_t<_Index>());
+        }
     }
 
     static constexpr __func_type __apply[sizeof...(_Indices)]={
@@ -1050,6 +1055,10 @@ struct __alternative_storage_base<variant<_Types...>,false>{
         emplaced_index_t<_Index>){
         throw bad_variant_access("Access to alternative storage for a variant that doesn't have any");
     }
+    template<ptrdiff_t _Index>
+    void __alt_destroy(emplaced_index_t<_Index>){
+        throw bad_variant_access("Access to alternative storage for a variant that doesn't have any");
+    }
 };
 
 template<typename ... _Types>
@@ -1066,6 +1075,11 @@ struct __alternative_storage_base<variant<_Types...>,true>{
     typename __indexed_type<_Index,_Types...>::__type& __alt_get(
         emplaced_index_t<_Index>){
         return __alternative_storage.__get(emplaced_index_t<_Index>());
+    }
+
+    template<ptrdiff_t _Index>
+    void __alt_destroy(emplaced_index_t<_Index>){
+        __alternative_storage.__destroy(emplaced_index_t<_Index>());
     }
 };
 
@@ -1100,11 +1114,10 @@ class variant:
     }
     
     void __destroy_self(){
-        if(__index==-1)
+        if(empty())
             return;
-        ptrdiff_t const __old_index=__index;
+        __destroy_op_table<variant>::__apply[index()](this);
         __index=-1;
-        __destroy_op_table<variant>::__apply[__old_index](this);
     }
     
     ptrdiff_t __move_construct(variant& __other){
@@ -1141,6 +1154,7 @@ class variant:
 
     template<ptrdiff_t _Index,typename ... _Args>
     void __two_stage_replace(_Args&& ... __args){
+        std::cout<<"two stage replace"<<std::endl;
         typedef typename __indexed_type<_Index,_Types...>::__type __type;
         __variant_data<__type> __local(
             emplaced_index_t<0>(),std::forward<_Args>(__args)...);
@@ -1153,6 +1167,7 @@ class variant:
 
     template<ptrdiff_t _Index,typename ... _Args>
     void __local_backup_replace(_Args&& ... __args){
+        std::cout<<"local backup replace"<<std::endl;
         __backup_storage<_Index,_Types...> __backup(__index,__storage);
         __emplace_construct<_Index>(std::forward<_Args>(__args)...);
         __index=_Index;
@@ -1163,13 +1178,15 @@ class variant:
     void __backup_replace(_Args&& ... __args){
         std::cout<<"backup replace "<<_Index<<"="<<typeid(typename __indexed_type<_Index,_Types...>::__type).name()<<std::endl;
         if(__index<0){
+            std::cout<<"storing in main storage"<<std::endl;
             __emplace_construct<_Index>(std::forward<_Args>(__args)...);
-            __index=-_Index-1;
+            __index=_Index;
         }
         else{
+            std::cout<<"storing in alt storage"<<std::endl;
             new(&this->__alternative_storage) __storage_type(
                 emplaced_index_t<_Index>(),std::forward<_Args>(__args)...);
-            __index=-_Index-1;
+            __index=-2-_Index;
         }
     }
 
@@ -1179,7 +1196,11 @@ class variant:
         __emplace_construct<_Index>(std::forward<_Args>(__args)...);
         __index=_Index;
     }
-    
+
+    constexpr bool __using_alt_storage() const noexcept{
+        return __index<-1;
+    }
+
 public:
     constexpr variant() noexcept:
         __index(-1)
@@ -1235,6 +1256,7 @@ public:
     
     template<typename _Type>
     variant& operator=(_Type&& __x){
+        std::cout<<"direct type assign"<<std::endl;
         constexpr ptrdiff_t _Index=
             __type_index_to_construct<_Type,_Types...>::__value;
         if(_Index==__index){
@@ -1247,42 +1269,46 @@ public:
     }
 
     variant& operator=(variant const& __other){
-        if(__other.__index==-1){
+        if(__other.empty()){
             __destroy_self();
         }
-        else if(__other.__index==__index){
-            __copy_assign_op_table<variant>::__apply[__index](this,__other);
+        else if(__other.index()==index()){
+            __copy_assign_op_table<variant>::__apply[index()](this,__other);
         }
         else{
             __replace_construct_helper::__op_table<variant>::__copy_assign[
-                __other.__index](this,__other);
+                __other.index()](this,__other);
         }
         return *this;
     }
     variant& operator=(variant& __other){
-        if(__other.__index==-1){
+        std::cout<<"nc copy assign"<<std::endl;
+        if(__other.empty()){
+            std::cout<<"other is empty"<<std::endl;
             __destroy_self();
         }
-        else if(__other.__index==__index){
-            __copy_assign_op_table<variant>::__apply[__index](this,__other);
+        else if(__other.index()==index()){
+            std::cout<<"direct copy, types same"<<std::endl;
+            __copy_assign_op_table<variant>::__apply[index()](this,__other);
         }
         else{
+            std::cout<<"replace copy"<<std::endl;
             __replace_construct_helper::__op_table<variant>::__copy_assign[
-                __other.__index](this,__other);
+                __other.index()](this,__other);
         }
         return *this;
     }
     variant& operator=(variant&& __other){
-        if(__other.__index==-1){
+        if(__other.empty()){
             __destroy_self();
         }
-        else if(__other.__index==__index){
-            __move_assign_op_table<variant>::__apply[__index](this,__other);
+        else if(__other.index()==index()){
+            __move_assign_op_table<variant>::__apply[index()](this,__other);
             __other.__destroy_self();
         }
         else{
             __replace_construct_helper::__op_table<variant>::__move_assign[
-                __other.__index](this,__other);
+                __other.index()](this,__other);
         }
         return *this;
     }
@@ -1302,13 +1328,13 @@ public:
         return __index==-1;
     }
     constexpr ptrdiff_t index() const noexcept{
-        return (__index<-1)?(-__index-1):__index;
+        return __using_alt_storage()?(-__index-2):__index;
     }
 
     void swap(variant& __other){
-        if(__other.__index==__index){
-            if(__index!=-1)
-                __swap_op_table<variant>::__apply[__index](*this,__other);
+        if(__other.index()==index()){
+            if(!empty())
+                __swap_op_table<variant>::__apply[index()](*this,__other);
         }
         else{
             std::swap(*this,__other);
@@ -1320,12 +1346,14 @@ template<ptrdiff_t _Index,typename ... _Types>
 struct __variant_accessor{
     typedef typename __indexed_type<_Index,_Types...>::__type __type;
     static constexpr __type& get(variant<_Types...>& __v){
-        return (__v.__index>=-1)?__v.__storage.__get(emplaced_index_t<_Index>()):
-            __v.__alt_get(emplaced_index_t<_Index>());
+        return __v.__using_alt_storage()?
+            __v.__alt_get(emplaced_index_t<_Index>()):
+            __v.__storage.__get(emplaced_index_t<_Index>());
     }
     static constexpr __type const& get(variant<_Types...> const& __v){
-        return (__v.__index>=-1)?__v.__storage.__get(emplaced_index_t<_Index>()):
-            __v.__alt_get(emplaced_index_t<_Index>());
+        return __v.__using_alt_storage()?
+            __v.__alt_get(emplaced_index_t<_Index>()):
+            __v.__storage.__get(emplaced_index_t<_Index>());
     }
 };
 

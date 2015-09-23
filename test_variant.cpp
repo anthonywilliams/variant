@@ -955,6 +955,44 @@ void throwing_emplace_when_stored_type_can_throw_leaves_variant_unchanged(){
     assert(se::get<1>(v).data==21);
 }
 
+struct MayThrowA{
+    int data;
+    MayThrowA(int i):
+        data(i){}
+    MayThrowA(MayThrowA const& other):
+        data(other.data){}
+};
+
+struct MayThrowB{
+    int data;
+    MayThrowB(int i):
+        data(i){}
+    MayThrowB(MayThrowB const& other):
+        data(other.data){}
+};
+
+void after_assignment_which_triggers_backup_storage_can_assign_variant(){
+    std::cout<<__FUNCTION__<<std::endl;
+    se::variant<MayThrowA,MayThrowB> v{MayThrowA(23)};
+    v.emplace<MayThrowB>(42);
+    assert(v.index()==1);
+    assert(se::get<1>(v).data==42);
+    se::variant<MayThrowA,MayThrowB> v2=v;
+    assert(v2.index()==1);
+    assert(se::get<1>(v2).data==42);
+    v=MayThrowA(23);
+    assert(v.index()==0);
+    assert(se::get<0>(v).data==23);
+    v2=v;
+    assert(v2.index()==0);
+    assert(se::get<0>(v2).data==23);
+    v2=MayThrowB(19);
+    assert(v2.index()==1);
+    assert(se::get<1>(v2).data==19);
+    v=v2;
+    assert(v2.index()==1);
+    assert(se::get<1>(v2).data==19);
+}
 
 int main(){
     initial_is_empty();
@@ -1020,4 +1058,5 @@ int main(){
     can_emplace_nonmovable_type_when_other_nothrow_movable();
     throwing_emplace_from_nonmovable_type_leaves_variant_unchanged();
     throwing_emplace_when_stored_type_can_throw_leaves_variant_unchanged();
+    after_assignment_which_triggers_backup_storage_can_assign_variant();
 }
