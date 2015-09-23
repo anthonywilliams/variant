@@ -1033,6 +1033,27 @@ void large_noexcept_movable_and_small_throw_movable(){
     assert(sizeof(v)<(2*sizeof(LargeNoExceptMovable)));
 }
 
+struct LargeMayThrowA{
+    char dummy[16];
+    LargeMayThrowA();
+    LargeMayThrowA(LargeMayThrowA const&){}
+};
+
+
+void construct_small_with_large_throwables(){
+    std::cout<<__FUNCTION__<<std::endl;
+    se::variant<std::string,LargeMayThrowA,MayThrowB> v{
+        MayThrowB(12)};
+    v="hello";
+    assert(v.index()==0);
+    assert(se::get<0>(v)=="hello");
+    v=MayThrowB(42);
+    std::cout<<"size of v="<<sizeof(v)<<std::endl;
+    std::cout<<"size of string="<<sizeof(std::string)<<std::endl;
+    std::cout<<"size of LargeMayThrowA="<<sizeof(LargeMayThrowA)<<std::endl;
+    std::cout<<"size of MayThrowB="<<sizeof(MayThrowB)<<std::endl;
+}
+
 int main(){
     initial_is_empty();
     empty_index_is_neg_one();
@@ -1100,4 +1121,5 @@ int main(){
     after_assignment_which_triggers_backup_storage_can_assign_variant();
     backup_storage_and_local_backup();
     large_noexcept_movable_and_small_throw_movable();
+    construct_small_with_large_throwables();
 }

@@ -42,8 +42,6 @@
 #include <new>
 #include <utility>
 #include <limits.h>
-#include <iostream>
-#include <typeinfo>
 
 namespace std{
 namespace experimental{
@@ -1236,22 +1234,26 @@ class variant:
 
     template<ptrdiff_t _Index,typename ... _Args>
     void __replace_construct(_Args&& ... __args){
+        typedef typename __indexed_type<_Index,_Types...>::__type __this_type;
+        static const bool __fits_in_storage=
+            __fits_alternative_storage<
+                __alternative_storage_base<
+                    variant<_Types...> >::__alternative_storage_size,
+            __this_type>::__value;
         __replace_construct_helper::__helper<
             _Index,
-            __storage_nothrow_constructible<
-                typename __indexed_type<_Index,_Types...>::__type,
-                _Args...>::__value ||
+            __storage_nothrow_constructible<__this_type,_Args...>::__value ||
             (sizeof...(_Types)==1),
-            __storage_nothrow_move_constructible<
-                typename __indexed_type<_Index,_Types...>::__type>::__value,
+            __storage_nothrow_move_constructible<__this_type>::__value &&
+            !__fits_in_storage,
             __other_storage_nothrow_move_constructible<
-                _Index,_Types...>::__value
+                _Index,_Types...>::__value  &&
+            !__fits_in_storage
             >::__trampoline(*this,std::forward<_Args>(__args)...);
     }
 
     template<ptrdiff_t _Index,typename ... _Args>
     void __two_stage_replace(_Args&& ... __args){
-        std::cout<<"two stage replace"<<std::endl;
         typedef typename __indexed_type<_Index,_Types...>::__type __type;
         __variant_data<__type> __local(
             emplaced_index_t<0>(),std::forward<_Args>(__args)...);
@@ -1264,7 +1266,6 @@ class variant:
 
     template<ptrdiff_t _Index,typename ... _Args>
     void __local_backup_replace(_Args&& ... __args){
-        std::cout<<"local backup replace"<<std::endl;
         __backup_storage<_Index,_Types...> __backup(__index,__storage);
         __emplace_construct<_Index>(std::forward<_Args>(__args)...);
         __index=_Index;
@@ -1273,14 +1274,11 @@ class variant:
     
     template<ptrdiff_t _Index,typename ... _Args>
     void __backup_replace(_Args&& ... __args){
-        std::cout<<"backup replace "<<_Index<<"="<<typeid(typename __indexed_type<_Index,_Types...>::__type).name()<<std::endl;
         if(__index<0){
-            std::cout<<"storing in main storage"<<std::endl;
             __emplace_construct<_Index>(std::forward<_Args>(__args)...);
             __index=_Index;
         }
         else{
-            std::cout<<"storing in alt storage"<<std::endl;
             new(&this->__alternative_storage) __storage_type(
                 emplaced_index_t<_Index>(),std::forward<_Args>(__args)...);
             __index=-2-_Index;
@@ -1353,7 +1351,6 @@ public:
     
     template<typename _Type>
     variant& operator=(_Type&& __x){
-        std::cout<<"direct type assign"<<std::endl;
         constexpr ptrdiff_t _Index=
             __type_index_to_construct<_Type,_Types...>::__value;
         if(_Index==__index){
@@ -1379,17 +1376,13 @@ public:
         return *this;
     }
     variant& operator=(variant& __other){
-        std::cout<<"nc copy assign"<<std::endl;
         if(__other.empty()){
-            std::cout<<"other is empty"<<std::endl;
             __destroy_self();
         }
         else if(__other.index()==index()){
-            std::cout<<"direct copy, types same"<<std::endl;
             __copy_assign_op_table<variant>::__apply[index()](this,__other);
         }
         else{
-            std::cout<<"replace copy"<<std::endl;
             __replace_construct_helper::__op_table<variant>::__copy_assign[
                 __other.index()](this,__other);
         }
