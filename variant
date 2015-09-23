@@ -220,6 +220,28 @@ struct __storage_nothrow_move_constructible<_Head,_Rest...> {
         __storage_nothrow_move_constructible<_Rest...>::__value;
 };
 
+template<ptrdiff_t _Index,typename ... _Types>
+struct __other_storage_nothrow_move_constructible;
+
+template<typename _Head,typename ... _Rest>
+struct __other_storage_nothrow_move_constructible<0,_Head,_Rest...>{
+    static const bool __value=__storage_nothrow_move_constructible<_Rest...>::__value;
+};
+
+template<typename _Head,typename ... _Rest>
+struct __other_storage_nothrow_move_constructible<-1,_Head,_Rest...>{
+    static const bool __value=
+        __storage_nothrow_move_constructible<_Head,_Rest...>::__value;
+};
+
+template<ptrdiff_t _Index,typename _Head,typename ... _Rest>
+struct __other_storage_nothrow_move_constructible<_Index,_Head,_Rest...>{
+    static const bool __value=
+        __storage_nothrow_move_constructible<_Head>::__value &&
+        __other_storage_nothrow_move_constructible<_Index-1,_Rest...>::__value;
+};
+
+
 template<typename ... _Types>
 union __variant_data;
 
@@ -808,7 +830,7 @@ struct __backup_storage<_Index,_Head,_Rest...>:
 struct __replace_construct_helper{
     template<
         ptrdiff_t _Index,
-        bool __indexed_type_has_nothrow_construct,
+        bool __construct_directly,
         bool __indexed_type_has_nothrow_move,
         bool __other_types_have_nothrow_move,
         typename ... _Types>
@@ -839,17 +861,28 @@ struct __replace_construct_helper::__helper<
 
     template<typename _Variant,typename ... _Args>
     static void __trampoline(_Variant& __v,_Args&& ... __args){
-        __v.template __nothrow_replace<_Index>(std::forward<_Args>(__args)...);
+        __v.template __direct_replace<_Index>(std::forward<_Args>(__args)...);
     }
 };
 
 
 template<
     ptrdiff_t _Index,
-    bool __other_types_have_nothrow_move,
     typename ... _Types>
 struct __replace_construct_helper::__helper<
-    _Index,false,false,__other_types_have_nothrow_move,_Types...>{
+    _Index,false,false,true,_Types...>{
+
+    template<typename _Variant,typename ... _Args>
+    static void __trampoline(_Variant& __v,_Args&& ... __args){
+        __v.template __local_backup_replace<_Index>(std::forward<_Args>(__args)...);
+    }
+};
+
+template<
+    ptrdiff_t _Index,
+    typename ... _Types>
+struct __replace_construct_helper::__helper<
+    _Index,false,false,false,_Types...>{
 
     template<typename _Variant,typename ... _Args>
     static void __trampoline(_Variant& __v,_Args&& ... __args){
@@ -917,10 +950,12 @@ class variant:
             _Index,
             __storage_nothrow_constructible<
                 typename __indexed_type<_Index,_Types...>::__type,
-                _Args...>::__value,
+                _Args...>::__value ||
+            (sizeof...(_Types)==1),
             __storage_nothrow_move_constructible<
                 typename __indexed_type<_Index,_Types...>::__type>::__value,
-            __storage_nothrow_move_constructible<_Types...>::__value,
+            __other_storage_nothrow_move_constructible<
+                _Index,_Types...>::__value,
             _Types...>::__trampoline(*this,std::forward<_Args>(__args)...);
     }
 
@@ -938,6 +973,20 @@ class variant:
     }
 
     template<ptrdiff_t _Index,typename ... _Args>
+    void __local_backup_replace(_Args&& ... __args){
+        std::cout<<"local backup replace "<<_Index<<"="<<typeid(typename __indexed_type<_Index,_Types...>::__type).name()<<std::endl;
+        variant __local(std::move(*this));
+        try{
+            __emplace_construct<_Index>(std::forward<_Args>(__args)...);
+            __index=_Index;
+        }
+        catch(...){
+            (*this)=std::move(__local);
+            throw;
+        }
+    }
+    
+    template<ptrdiff_t _Index,typename ... _Args>
     void __backup_replace(_Args&& ... __args){
         std::cout<<"backup replace "<<_Index<<"="<<typeid(typename __indexed_type<_Index,_Types...>::__type).name()<<std::endl;
         __destroy_self();
@@ -946,12 +995,11 @@ class variant:
     }
 
     template<ptrdiff_t _Index,typename ... _Args>
-    void __nothrow_replace(_Args&& ... __args) noexcept{
-        std::cout<<"nothrow replace "<<_Index<<"="<<typeid(typename __indexed_type<_Index,_Types...>::__type).name()<<std::endl;
+    void __direct_replace(_Args&& ... __args) {
+        std::cout<<"direct replace "<<_Index<<"="<<typeid(typename __indexed_type<_Index,_Types...>::__type).name()<<std::endl;
         __destroy_self();
         __emplace_construct<_Index>(std::forward<_Args>(__args)...);
         __index=_Index;
-        std::cout<<"nothrow replace done "<<_Index<<"="<<typeid(typename __indexed_type<_Index,_Types...>::__type).name()<<std::endl;
     }
     
 public:
