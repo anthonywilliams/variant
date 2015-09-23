@@ -810,17 +810,15 @@ struct __replace_construct_helper{
         ptrdiff_t _Index,
         bool __construct_directly,
         bool __indexed_type_has_nothrow_move,
-        bool __other_types_have_nothrow_move,
-        typename ... _Types>
+        bool __other_types_have_nothrow_move>
     struct __helper;
 };
 
 template<
     ptrdiff_t _Index,
-    bool __other_types_have_nothrow_move,
-    typename ... _Types>
+    bool __other_types_have_nothrow_move>
 struct __replace_construct_helper::__helper<
-    _Index,false,true,__other_types_have_nothrow_move,_Types...>{
+    _Index,false,true,__other_types_have_nothrow_move>{
 
     template<typename _Variant,typename ... _Args>
     static void __trampoline(_Variant& __v,_Args&& ... __args){
@@ -831,11 +829,10 @@ struct __replace_construct_helper::__helper<
 template<
     ptrdiff_t _Index,
     bool __indexed_type_has_nothrow_move,
-    bool __other_types_have_nothrow_move,
-    typename ... _Types>
+    bool __other_types_have_nothrow_move>
 struct __replace_construct_helper::__helper<
     _Index,true,__indexed_type_has_nothrow_move,
-    __other_types_have_nothrow_move,_Types...>{
+    __other_types_have_nothrow_move>{
 
     template<typename _Variant,typename ... _Args>
     static void __trampoline(_Variant& __v,_Args&& ... __args){
@@ -845,10 +842,9 @@ struct __replace_construct_helper::__helper<
 
 
 template<
-    ptrdiff_t _Index,
-    typename ... _Types>
+    ptrdiff_t _Index>
 struct __replace_construct_helper::__helper<
-    _Index,false,false,true,_Types...>{
+    _Index,false,false,true>{
 
     template<typename _Variant,typename ... _Args>
     static void __trampoline(_Variant& __v,_Args&& ... __args){
@@ -857,10 +853,9 @@ struct __replace_construct_helper::__helper<
 };
 
 template<
-    ptrdiff_t _Index,
-    typename ... _Types>
+    ptrdiff_t _Index>
 struct __replace_construct_helper::__helper<
-    _Index,false,false,false,_Types...>{
+    _Index,false,false,false>{
 
     template<typename _Variant,typename ... _Args>
     static void __trampoline(_Variant& __v,_Args&& ... __args){
@@ -1029,8 +1024,8 @@ class variant:
             __storage_nothrow_move_constructible<
                 typename __indexed_type<_Index,_Types...>::__type>::__value,
             __other_storage_nothrow_move_constructible<
-                _Index,_Types...>::__value,
-            _Types...>::__trampoline(*this,std::forward<_Args>(__args)...);
+                _Index,_Types...>::__value
+            >::__trampoline(*this,std::forward<_Args>(__args)...);
     }
 
     template<ptrdiff_t _Index,typename ... _Args>
