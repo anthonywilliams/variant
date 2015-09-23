@@ -183,6 +183,35 @@ struct __all_trivially_destructible<_Type> {
         std::is_trivially_destructible<typename __stored_type<_Type>::__type>::value;
 };
 
+template<typename _Head,typename ... _Rest>
+struct __all_trivially_destructible<_Head,_Rest...> {
+    static constexpr bool __value=
+        __all_trivially_destructible<_Head>::__value &&
+        __all_trivially_destructible<_Rest...>::__value;
+};
+
+template<typename ... _Types>
+struct __all_nothrow_move_constructible;
+
+template<>
+struct __all_nothrow_move_constructible<> {
+    static constexpr bool __value=true;
+};
+
+template<typename _Type>
+struct __all_nothrow_move_constructible<_Type> {
+    static constexpr bool __value=
+        std::is_nothrow_move_constructible<
+        typename __stored_type<_Type>::__type>::value;
+};
+
+template<typename _Head,typename ... _Rest>
+struct __all_nothrow_move_constructible<_Head,_Rest...> {
+    static constexpr bool __value=
+        __all_nothrow_move_constructible<_Head>::__value &&
+        __all_nothrow_move_constructible<_Rest...>::__value;
+};
+
 template<typename ... _Types>
 union __variant_data;
 
@@ -374,13 +403,6 @@ union __variant_data<_Head,_Rest...>{
     }
 };
 
-
-template<typename _Head,typename ... _Rest>
-struct __all_trivially_destructible<_Head,_Rest...> {
-    static constexpr bool __value=
-        __all_trivially_destructible<_Head>::__value &&
-        __all_trivially_destructible<_Rest...>::__value;
-};
 
 template<ptrdiff_t... _Indices>
 struct __index_sequence{
@@ -753,8 +775,34 @@ struct __type_index_to_construct{
     static constexpr ptrdiff_t __value=__first_index<__all_matches>::__value;
 };
 
+template<
+    size_t _Index,
+    typename _Type,
+    bool=std::is_nothrow_move_constructible<
+        typename __stored_type<_Type>::__type>::value>
+struct __backup_storage_impl{};
+
+template<size_t _Index,typename _Type>
+struct __backup_storage_impl<_Index,_Type,false>{
+    __variant_data<_Type> __backup;
+};
+
+template<size_t _Index,typename ... _Types>
+struct __backup_storage;
+
+template<size_t _Index>
+struct __backup_storage<_Index>{};
+
+template<size_t _Index,typename _Head,typename ... _Rest>
+struct __backup_storage<_Index,_Head,_Rest...>:
+        __backup_storage_impl<_Index,_Head>,
+    __backup_storage<_Index+1,_Rest...>{};
+
 template<typename ... _Types>
-class variant: private __variant_base<variant<_Types...>,__all_trivially_destructible<_Types...>::__value>{
+class variant:
+        private __variant_base<
+    variant<_Types...>,__all_trivially_destructible<_Types...>::__value>
+{
     typedef __variant_base<variant<_Types...>,__all_trivially_destructible<_Types...>::__value> __base_type;
     friend __base_type;
     friend struct __copy_construct_op_table<variant>;
@@ -800,6 +848,13 @@ class variant: private __variant_base<variant<_Types...>,__all_trivially_destruc
             return -1;
         __copy_construct_op_table<variant>::__apply[__other_index](this,__other);
         return __other_index;
+    }
+
+    template<ptrdiff_t _Index,typename ... _Args>
+    void __replace_construct(_Args&& ... __args){
+        __destroy_self();
+        __emplace_construct<_Index>(std::forward<_Args>(__args)...);
+        __index=_Index;
     }
     
 public:
@@ -863,9 +918,7 @@ public:
             get<_Index>(*this)=std::forward<_Type>(__x);
         }
         else{
-            __destroy_self();
-            __emplace_construct<_Index>(std::forward<_Type>(__x));
-            __index=_Index;
+            __replace_construct<_Index>(std::forward<_Type>(__x));
         }
         return *this;
     }
@@ -913,17 +966,13 @@ public:
 
     template<typename _Type,typename ... _Args>
     void emplace(_Args&& ... __args){
-        __destroy_self();
-        __index=__emplace_construct<
-            __type_index<_Type,_Types...>::__value>(
-                std::forward<_Args>(__args)...);
+        __replace_construct<__type_index<_Type,_Types...>::__value>(
+            std::forward<_Args>(__args)...);
     }
     
     template<ptrdiff_t _Index,typename ... _Args>
     void emplace(_Args&& ... __args){
-        __destroy_self();
-        __emplace_construct<_Index>(std::forward<_Args>(__args)...);
-        __index=_Index;
+        __replace_construct<_Index>(std::forward<_Args>(__args)...);
     }
     
     constexpr bool empty() const noexcept{
