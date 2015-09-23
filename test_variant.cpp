@@ -248,7 +248,9 @@ void copy_assignment_from_empty(){
 struct CopyError{};
 
 struct ThrowingCopy{
-    ThrowingCopy(){}
+    int data;
+    
+    ThrowingCopy():data(0){}
     ThrowingCopy(ThrowingCopy const&){
         throw CopyError();
     }
@@ -939,6 +941,20 @@ void throwing_emplace_from_nonmovable_type_leaves_variant_unchanged(){
     assert(se::get<1>(v)=="hello");
 }
 
+void throwing_emplace_when_stored_type_can_throw_leaves_variant_unchanged(){
+    std::cout<<__FUNCTION__<<std::endl;
+    se::variant<NonMovableThrower,ThrowingCopy> v{
+        se::emplaced_type_t<ThrowingCopy>()};
+    se::get<1>(v).data=21;
+    try{
+        v.emplace<NonMovableThrower>(42);
+        assert(!"Should throw");
+    }
+    catch(CopyError&){}
+    assert(v.index()==1);
+    assert(se::get<1>(v).data==21);
+}
+
 
 int main(){
     initial_is_empty();
@@ -1003,4 +1019,5 @@ int main(){
     throwing_assign_from_type_leaves_variant_unchanged();
     can_emplace_nonmovable_type_when_other_nothrow_movable();
     throwing_emplace_from_nonmovable_type_leaves_variant_unchanged();
+    throwing_emplace_when_stored_type_can_throw_leaves_variant_unchanged();
 }
