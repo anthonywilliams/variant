@@ -1,6 +1,7 @@
 .PHONY: test
 
 CXXFLAGS=-std=c++14 -Wall -g -O2
+LDFLAGS=-g -O2
 ifdef CLANG
 CC=clang++-3.7
 else
@@ -9,9 +10,10 @@ CC=g++-5
 else
 CC=g++
 endif
+CXXFLAGS+= -fsanitize=address -fsanitize=undefined -fsanitize=null -fsanitize=return
+LDFLAGS+= -fsanitize=address -fsanitize=undefined -fsanitize=null -fsanitize=return
 endif
 CXX=$(CC)
-LDFLAGS=-g -O2
 
 test: test_variant
 	./test_variant
