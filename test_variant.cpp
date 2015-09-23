@@ -10,16 +10,19 @@
 namespace se=std::experimental;
 
 void initial_is_empty(){
+    std::cout<<__FUNCTION__<<std::endl;
     se::variant<int> v;
     assert(v.empty());
 }
 
 void empty_index_is_neg_one(){
+    std::cout<<__FUNCTION__<<std::endl;
     se::variant<int> v;
     assert(v.index()==-1);
 }
 
 void get_empty_t_works_for_empty(){
+    std::cout<<__FUNCTION__<<std::endl;
     se::variant<int> v;
 
     se::empty_t& e1=se::get<se::empty_t>(v);
@@ -28,17 +31,20 @@ void get_empty_t_works_for_empty(){
 }
 
 void can_construct_first_type(){
+    std::cout<<__FUNCTION__<<std::endl;
     se::variant<int> v(42);
     assert(v.index()==0);
 }
 
 void can_get_value_of_first_type(){
+    std::cout<<__FUNCTION__<<std::endl;
     se::variant<int> v(42);
     int& i=se::get<int>(v);
     assert(i==42);
 }
 
 void can_construct_second_type(){
+    std::cout<<__FUNCTION__<<std::endl;
     se::variant<int,std::string> v(std::string("hello"));
     assert(v.index()==1);
     std::string& s=se::get<std::string>(v);
@@ -46,6 +52,7 @@ void can_construct_second_type(){
 }
 
 void can_move_variant(){
+    std::cout<<__FUNCTION__<<std::endl;
     se::variant<int,std::string> v(std::string("hello"));
     se::variant<int,std::string> v2(std::move(v));
     assert(v2.index()==1);
@@ -55,6 +62,7 @@ void can_move_variant(){
 }
 
 void can_copy_variant(){
+    std::cout<<__FUNCTION__<<std::endl;
     se::variant<int,std::string> v(std::string("hello"));
     se::variant<int,std::string> v2(v);
     assert(v2.index()==1);
@@ -67,6 +75,7 @@ void can_copy_variant(){
 }
 
 void can_copy_const_variant(){
+    std::cout<<__FUNCTION__<<std::endl;
     se::variant<int,std::string> const v(std::string("hello"));
     se::variant<int,std::string> v2(v);
     assert(v2.index()==1);
@@ -79,6 +88,7 @@ void can_copy_const_variant(){
 }
 
 void construction_from_lvalue(){
+    std::cout<<__FUNCTION__<<std::endl;
     std::vector<int> vec(42);
     se::variant<std::vector<int>> v(vec);
     assert(vec.size()==42);
@@ -89,6 +99,7 @@ void construction_from_lvalue(){
 }
 
 void construction_from_const_lvalue(){
+    std::cout<<__FUNCTION__<<std::endl;
     std::vector<int> const vec(42);
     se::variant<std::vector<int>> v(vec);
     assert(vec.size()==42);
@@ -99,6 +110,7 @@ void construction_from_const_lvalue(){
 }
 
 void move_construction_with_move_only_types(){
+    std::cout<<__FUNCTION__<<std::endl;
     std::unique_ptr<int> ui(new int(42));
     se::variant<std::unique_ptr<int>> v(std::move(ui));
     assert(v.index()==0);
@@ -150,6 +162,7 @@ struct CopyCounter{
 };
 
 void copy_assignment_same_type(){
+    std::cout<<__FUNCTION__<<std::endl;
     CopyCounter cc;
     se::variant<CopyCounter> v(cc);
     assert(v.index()==0);
@@ -168,6 +181,7 @@ void copy_assignment_same_type(){
 }
 
 void copy_assignment_to_empty(){
+    std::cout<<__FUNCTION__<<std::endl;
     CopyCounter cc;
     se::variant<CopyCounter> v(cc);
     assert(v.index()==0);
@@ -203,6 +217,7 @@ struct InstanceCounter{
 unsigned InstanceCounter::instances=0;
     
 void copy_assignment_of_diff_types_destroys_old(){
+    std::cout<<__FUNCTION__<<std::endl;
     se::variant<InstanceCounter,int> v;
     assert(InstanceCounter::instances==0);
     v=se::variant<InstanceCounter,int>(InstanceCounter());
@@ -215,9 +230,11 @@ void copy_assignment_of_diff_types_destroys_old(){
     assert(se::get<int>(v2)==42);
     assert(se::get<int>(v)==42);
     assert(InstanceCounter::instances==0);
+    std::cout<<__FUNCTION__<<" done"<<std::endl;
 }
 
 void copy_assignment_from_empty(){
+    std::cout<<__FUNCTION__<<std::endl;
     se::variant<InstanceCounter,int> v=InstanceCounter();
     assert(v.index()==0);
     assert(InstanceCounter::instances==1);
@@ -244,20 +261,22 @@ struct ThrowingCopy{
 };
 
 void throwing_copy_assign_leaves_target_unchanged(){
-    // se::variant<std::string,ThrowingCopy> v=std::string("hello");
-    // assert(v.index()==0);
-    // se::variant<std::string,ThrowingCopy> v2{ThrowingCopy()};
-    // try{
-    //     v=v2;
-    //     assert(!"Exception should be thrown");
-    // }
-    // catch(CopyError&){
-    // }
-    // assert(v.index()==0);
-    // assert(se::get<0>(v)=="hello");
+    std::cout<<__FUNCTION__<<std::endl;
+    se::variant<std::string,ThrowingCopy> v=std::string("hello");
+    assert(v.index()==0);
+    se::variant<std::string,ThrowingCopy> v2{se::emplaced_type_t<ThrowingCopy>()};
+    try{
+        v=v2;
+        assert(!"Exception should be thrown");
+    }
+    catch(CopyError&){
+    }
+    assert(v.index()==0);
+    assert(se::get<0>(v)=="hello");
 }
 
 void move_assignment_to_empty(){
+    std::cout<<__FUNCTION__<<std::endl;
     CopyCounter cc;
     se::variant<CopyCounter> v(cc);
     assert(v.index()==0);
@@ -277,6 +296,7 @@ void move_assignment_to_empty(){
 }
 
 void move_assignment_same_type(){
+    std::cout<<__FUNCTION__<<std::endl;
     CopyCounter cc;
     se::variant<CopyCounter> v(cc);
     assert(v.index()==0);
@@ -296,6 +316,7 @@ void move_assignment_same_type(){
 }
 
 void move_assignment_of_diff_types_destroys_old(){
+    std::cout<<__FUNCTION__<<std::endl;
     se::variant<InstanceCounter,CopyCounter> v;
     assert(InstanceCounter::instances==0);
     v=se::variant<InstanceCounter,CopyCounter>(InstanceCounter());
@@ -313,6 +334,7 @@ void move_assignment_of_diff_types_destroys_old(){
 }
 
 void move_assignment_from_empty(){
+    std::cout<<__FUNCTION__<<std::endl;
     se::variant<InstanceCounter,int> v=InstanceCounter();
     assert(v.index()==0);
     assert(InstanceCounter::instances==1);
@@ -324,6 +346,7 @@ void move_assignment_from_empty(){
 }
 
 void emplace_construction_by_type(){
+    std::cout<<__FUNCTION__<<std::endl;
     const char* const msg="hello";
     se::variant<int,char const*,std::string> v(
         se::emplaced_type_t<std::string>(),msg);
@@ -332,6 +355,7 @@ void emplace_construction_by_type(){
 }
 
 void emplace_construction_by_index(){
+    std::cout<<__FUNCTION__<<std::endl;
     const char* const msg="hello";
     se::variant<int,char const*,std::string> v(
         se::emplaced_index_t<2>(),msg);
@@ -340,6 +364,7 @@ void emplace_construction_by_index(){
 }
 
 void holds_alternative_for_empty_variant(){
+    std::cout<<__FUNCTION__<<std::endl;
     se::variant<int,double> v;
     assert(!se::holds_alternative<int>(v));
     assert(!se::holds_alternative<double>(v));
@@ -347,6 +372,7 @@ void holds_alternative_for_empty_variant(){
 }
 
 void holds_alternative_for_non_empty_variant(){
+    std::cout<<__FUNCTION__<<std::endl;
     se::variant<int,double> v(2.3);
     assert(!se::holds_alternative<int>(v));
     assert(se::holds_alternative<double>(v));
@@ -354,6 +380,7 @@ void holds_alternative_for_non_empty_variant(){
 }
 
 void assignment_from_value_to_empty(){
+    std::cout<<__FUNCTION__<<std::endl;
     CopyCounter cc;
     se::variant<int,CopyCounter> v;
     v=cc;
@@ -365,6 +392,7 @@ void assignment_from_value_to_empty(){
 }
 
 void assignment_from_value_to_same_type(){
+    std::cout<<__FUNCTION__<<std::endl;
     CopyCounter cc;
     se::variant<int,CopyCounter> v(cc);
     v=cc;
@@ -376,6 +404,7 @@ void assignment_from_value_to_same_type(){
 }
 
 void assignment_from_value_of_diff_types_destroys_old(){
+    std::cout<<__FUNCTION__<<std::endl;
     se::variant<InstanceCounter,CopyCounter> v{InstanceCounter()};
     assert(v.index()==0);
     assert(InstanceCounter::instances==1);
@@ -389,6 +418,7 @@ void assignment_from_value_of_diff_types_destroys_old(){
 }
 
 void emplace_from_value_to_empty(){
+    std::cout<<__FUNCTION__<<std::endl;
     const char* const msg="hello";
     se::variant<int,char const*,std::string> v;
     v.emplace<std::string>(msg);
@@ -397,6 +427,7 @@ void emplace_from_value_to_empty(){
 }
 
 void emplace_from_value_to_same_type(){
+    std::cout<<__FUNCTION__<<std::endl;
     CopyCounter cc;
     se::variant<int,CopyCounter> v(cc);
     v.emplace<CopyCounter>();
@@ -408,6 +439,7 @@ void emplace_from_value_to_same_type(){
 }
 
 void emplace_from_value_of_diff_types_destroys_old(){
+    std::cout<<__FUNCTION__<<std::endl;
     se::variant<InstanceCounter,CopyCounter> v{InstanceCounter()};
     assert(v.index()==0);
     assert(InstanceCounter::instances==1);
@@ -421,6 +453,7 @@ void emplace_from_value_of_diff_types_destroys_old(){
 }
 
 void emplace_by_index_to_empty(){
+    std::cout<<__FUNCTION__<<std::endl;
     const char* const msg="hello";
     se::variant<int,char const*,std::string> v;
     v.emplace<2>(msg);
@@ -429,6 +462,7 @@ void emplace_by_index_to_empty(){
 }
 
 void emplace_by_index_to_same_type(){
+    std::cout<<__FUNCTION__<<std::endl;
     CopyCounter cc;
     se::variant<int,CopyCounter> v(cc);
     v.emplace<1>();
@@ -440,6 +474,7 @@ void emplace_by_index_to_same_type(){
 }
 
 void emplace_by_index_of_diff_types_destroys_old(){
+    std::cout<<__FUNCTION__<<std::endl;
     se::variant<InstanceCounter,CopyCounter> v{InstanceCounter()};
     assert(v.index()==0);
     assert(InstanceCounter::instances==1);
@@ -453,6 +488,7 @@ void emplace_by_index_of_diff_types_destroys_old(){
 }
 
 void swap_same_type(){
+    std::cout<<__FUNCTION__<<std::endl;
     se::variant<int,CopyCounter> v{CopyCounter()};
     assert(se::get<CopyCounter>(v).copy_construct==0);
     assert(se::get<CopyCounter>(v).move_construct==1);
@@ -480,6 +516,7 @@ void swap_same_type(){
 }
 
 void swap_different_types(){
+    std::cout<<__FUNCTION__<<std::endl;
     se::variant<int,CopyCounter> v{CopyCounter()};
     assert(se::get<CopyCounter>(v).copy_construct==0);
     assert(se::get<CopyCounter>(v).move_construct==1);
@@ -498,6 +535,7 @@ void swap_different_types(){
 }
 
 void assign_empty_to_empty(){
+    std::cout<<__FUNCTION__<<std::endl;
     se::variant<int> v1,v2;
     v1=v2;
     assert(v1.index()==-1);
@@ -505,6 +543,7 @@ void assign_empty_to_empty(){
 }
 
 void swap_empties(){
+    std::cout<<__FUNCTION__<<std::endl;
     se::variant<int> v1,v2;
     v1.swap(v2);
     assert(v1.index()==-1);
@@ -524,6 +563,7 @@ struct VisitorIS{
 };
 
 void visit(){
+    std::cout<<__FUNCTION__<<std::endl;
     se::variant<int,std::string> v(42);
 
     int i=0;
@@ -544,6 +584,7 @@ void visit(){
 }
 
 void reference_members(){
+    std::cout<<__FUNCTION__<<std::endl;
     int i=42;
     se::variant<int&> v(se::emplaced_index_t<0>(),i);
 
@@ -553,6 +594,7 @@ void reference_members(){
 }
 
 void equality(){
+    std::cout<<__FUNCTION__<<std::endl;
     se::variant<int,double,std::string> v(42);
     se::variant<int,double,std::string> v2(4.2);
     se::variant<int,double,std::string> v3(std::string("42"));
@@ -573,6 +615,7 @@ void equality(){
 }
 
 void less_than(){
+    std::cout<<__FUNCTION__<<std::endl;
     se::variant<int,double,std::string> v(42);
     se::variant<int,double,std::string> v2(4.2);
     se::variant<int,double,std::string> v3(std::string("42"));
@@ -596,6 +639,7 @@ void less_than(){
 }
 
 void constexpr_variant(){
+    std::cout<<__FUNCTION__<<std::endl;
     constexpr se::variant<int> v(42);
     constexpr int i=se::get<int>(v);
     assert(i==42);
@@ -659,6 +703,7 @@ struct VisitorISD{
 };
 
 void multivisitor(){
+    std::cout<<__FUNCTION__<<std::endl;
     se::variant<int,char,std::string> v(42);
     se::variant<double,int> v2(4.2);
 
@@ -692,6 +737,7 @@ void multivisitor(){
 }
 
 void sizes(){
+    std::cout<<__FUNCTION__<<std::endl;
     std::cout<<"empty_t:"<<sizeof(se::empty_t)<<std::endl;
     std::cout<<"variant<>:"<<sizeof(se::variant<>)<<std::endl;
     std::cout<<"variant<char>:"<<sizeof(se::variant<char>)<<std::endl;
@@ -712,6 +758,7 @@ std::cout<<"variant<char,std::pair<double,char>>:"<<sizeof(se::variant<char,std:
 }
 
 void duplicate_types(){
+    std::cout<<__FUNCTION__<<std::endl;
     se::variant<int,int> v(42);
     assert(se::get<int>(v)==42);
     assert(v.index()==0);
@@ -731,6 +778,7 @@ struct NonMovable{
 
 
 void non_movable_types(){
+    std::cout<<__FUNCTION__<<std::endl;
     se::variant<NonMovable> v{se::emplaced_index_t<0>()};
     assert(se::get<0>(v).i==42);
     se::get<0>(v).i=37;
@@ -739,6 +787,7 @@ void non_movable_types(){
 }
 
 void can_emplace_empty(){
+    std::cout<<__FUNCTION__<<std::endl;
     se::variant<int> v(42);
     v.emplace<se::empty_t>();
     assert(v.empty());
@@ -748,6 +797,7 @@ void can_emplace_empty(){
 }
 
 void can_emplace_empty_by_index(){
+    std::cout<<__FUNCTION__<<std::endl;
     se::variant<int> v(42);
     v.emplace<-1>();
     assert(v.empty());
@@ -757,12 +807,14 @@ void can_emplace_empty_by_index(){
 }
 
 void direct_init_reference_member(){
+    std::cout<<__FUNCTION__<<std::endl;
     int i=42;
     se::variant<int&> v(i);
     assert(&se::get<int&>(v)==&i);
 }
 
 void reference_types_preferred_for_lvalue(){
+    std::cout<<__FUNCTION__<<std::endl;
     int i=42;
     se::variant<int,int&> v(i);
     assert(v.index()==1);
@@ -772,12 +824,14 @@ void reference_types_preferred_for_lvalue(){
 }
 
 void construction_with_conversion(){
+    std::cout<<__FUNCTION__<<std::endl;
     se::variant<int,std::string> v("hello");
     assert(v.index()==1);
     assert(se::get<1>(v)=="hello");
 }
 
 void assignment_with_conversion(){
+    std::cout<<__FUNCTION__<<std::endl;
     se::variant<int,std::string> v;
     v="hello";
     assert(v.index()==1);
@@ -785,11 +839,13 @@ void assignment_with_conversion(){
 }
 
 void visitor_with_non_void_return(){
+    std::cout<<__FUNCTION__<<std::endl;
     se::variant<int> v(42);
     assert(visit([](auto i){return i*2;},v)==84);
 }
 
 void multi_visitor_with_non_void_return(){
+    std::cout<<__FUNCTION__<<std::endl;
     se::variant<int> v(42);
     se::variant<double> v2(4.2);
 
@@ -797,6 +853,7 @@ void multi_visitor_with_non_void_return(){
 }
 
 void initialization_with_initializer_list(){
+    std::cout<<__FUNCTION__<<std::endl;
     se::variant<std::vector<int>> v{1,2,3,4};
     assert(v.index()==0);
     assert(se::get<0>(v).size()==4);
@@ -815,6 +872,7 @@ struct vector_type{
 
 
 void json(){
+    std::cout<<__FUNCTION__<<std::endl;
     JSON v1{1};
     JSON v2{4.2};
     JSON v3{"hello"};
