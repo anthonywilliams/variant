@@ -994,6 +994,45 @@ void after_assignment_which_triggers_backup_storage_can_assign_variant(){
     assert(se::get<1>(v2).data==19);
 }
 
+void backup_storage_and_local_backup(){
+    std::cout<<__FUNCTION__<<std::endl;
+    se::variant<std::string,NonMovableThrower> v{"hello"};
+    assert(v.index()==0);
+    assert(se::get<0>(v)=="hello");
+    try{
+        v.emplace<NonMovableThrower>(42);
+        assert(!"Should throw");
+    }
+    catch(CopyError&){}
+    assert(v.index()==0);
+    assert(se::get<0>(v)=="hello");
+}
+
+struct LargeNoExceptMovable{
+    char buf[512];
+
+    LargeNoExceptMovable() noexcept{}
+    LargeNoExceptMovable(LargeNoExceptMovable&&) noexcept{}
+    LargeNoExceptMovable(LargeNoExceptMovable const&&) noexcept{}
+    LargeNoExceptMovable& operator=(LargeNoExceptMovable&&) noexcept{
+        return *this;
+    }
+    LargeNoExceptMovable& operator=(LargeNoExceptMovable const&&) noexcept{
+        return *this;
+    }
+};
+
+
+void large_noexcept_movable_and_small_throw_movable(){
+    std::cout<<__FUNCTION__<<std::endl;
+    se::variant<LargeNoExceptMovable,MayThrowA,MayThrowB> v{
+        LargeNoExceptMovable()};
+    v=MayThrowB(21);
+    v=LargeNoExceptMovable();
+    v=MayThrowA(12);
+    assert(sizeof(v)<(2*sizeof(LargeNoExceptMovable)));
+}
+
 int main(){
     initial_is_empty();
     empty_index_is_neg_one();
@@ -1059,4 +1098,6 @@ int main(){
     throwing_emplace_from_nonmovable_type_leaves_variant_unchanged();
     throwing_emplace_when_stored_type_can_throw_leaves_variant_unchanged();
     after_assignment_which_triggers_backup_storage_can_assign_variant();
+    backup_storage_and_local_backup();
+    large_noexcept_movable_and_small_throw_movable();
 }
