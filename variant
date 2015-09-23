@@ -812,6 +812,10 @@ struct __replace_construct_helper{
         bool __indexed_type_has_nothrow_move,
         bool __other_types_have_nothrow_move>
     struct __helper;
+
+    template<typename _Variant,
+             typename _Indices=typename __variant_indices<_Variant>::__type>
+    struct __op_table;
 };
 
 template<
@@ -862,6 +866,45 @@ struct __replace_construct_helper::__helper<
         __v.template __backup_replace<_Index>(std::forward<_Args>(__args)...);
     }
 };
+
+template<typename _Variant,ptrdiff_t ... _Indices>
+struct __replace_construct_helper::__op_table<_Variant,__index_sequence<_Indices...>>{
+    typedef void(* const __func_type)(_Variant*,_Variant&);
+    
+    template<ptrdiff_t _Index>
+    static void __move_assign_func(
+        _Variant * __lhs,_Variant& __rhs){
+        __lhs->template __replace_construct<_Index>(std::move(get<_Index>(__rhs)));
+        __rhs.__destroy_self();
+    }
+
+    template<ptrdiff_t _Index>
+    static void __copy_assign_func(
+        _Variant * __lhs,_Variant& __rhs){
+        __lhs->template __replace_construct<_Index>(get<_Index>(__rhs));
+    }
+    
+    static constexpr __func_type __move_assign[sizeof...(_Indices)]={
+        &__move_assign_func<_Indices>...
+    };
+    static constexpr __func_type __copy_assign[sizeof...(_Indices)]={
+        &__copy_assign_func<_Indices>...
+    };
+};
+
+template<typename _Variant,ptrdiff_t ... _Indices>
+constexpr typename __replace_construct_helper::__op_table<
+    _Variant,__index_sequence<_Indices...>>::__func_type
+__replace_construct_helper::__op_table<
+    _Variant,__index_sequence<_Indices...>>::__move_assign[
+    sizeof...(_Indices)];
+
+template<typename _Variant,ptrdiff_t ... _Indices>
+constexpr typename __replace_construct_helper::__op_table<
+    _Variant,__index_sequence<_Indices...>>::__func_type
+__replace_construct_helper::__op_table<
+    _Variant,__index_sequence<_Indices...>>::__copy_assign[
+    sizeof...(_Indices)];
 
 template<ptrdiff_t _Index,ptrdiff_t _MaskIndex,typename _Storage>
 struct __backup_storage_ops{
@@ -938,14 +981,17 @@ struct __backup_storage{
 
     __backup_storage(ptrdiff_t __live_index_,__storage_type& __live_storage_):
         __backup_index(__live_index_),__live_storage(__live_storage_){
-        __op_table_type::__move_ops[__backup_index](
-            &__backup,__live_storage);
-        __op_table_type::__destroy_ops[__backup_index](
-            &__live_storage);
+        if(__backup_index>=0){
+            __op_table_type::__move_ops[__backup_index](
+                &__backup,__live_storage);
+            __op_table_type::__destroy_ops[__backup_index](
+                &__live_storage);
+        }
     }
     void __destroy(){
-        __op_table_type::__destroy_ops[__backup_index](
-            &__backup);
+        if(__backup_index>=0)
+            __op_table_type::__destroy_ops[__backup_index](
+                &__backup);
         __backup_index=-1;
     }
     
@@ -1141,8 +1187,8 @@ public:
             __copy_assign_op_table<variant>::__apply[__index](this,__other);
         }
         else{
-            __destroy_self();
-            __index=__copy_construct(__other);
+            __replace_construct_helper::__op_table<variant>::__copy_assign[
+                __other.__index](this,__other);
         }
         return *this;
     }
@@ -1154,8 +1200,8 @@ public:
             __copy_assign_op_table<variant>::__apply[__index](this,__other);
         }
         else{
-            __destroy_self();
-            __index=__copy_construct(__other);
+            __replace_construct_helper::__op_table<variant>::__copy_assign[
+                __other.__index](this,__other);
         }
         return *this;
     }
@@ -1168,8 +1214,8 @@ public:
             __other.__destroy_self();
         }
         else{
-            __destroy_self();
-            __index=__move_construct(__other);
+            __replace_construct_helper::__op_table<variant>::__move_assign[
+                __other.__index](this,__other);
         }
         return *this;
     }
