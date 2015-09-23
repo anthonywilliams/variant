@@ -858,6 +858,30 @@ void can_emplace_nonmovable_type_when_other_nothrow_movable(){
     assert(v.index()==1);
 }
 
+struct NonMovableThrower{
+    NonMovableThrower(int i){
+        if(i==42)
+            throw CopyError();
+    }
+    
+    NonMovableThrower(NonMovableThrower&&)=delete;
+    NonMovableThrower& operator=(NonMovableThrower&&)=delete;
+};
+
+
+void throwing_emplace_from_nonmovable_type_leaves_variant_unchanged(){
+    std::cout<<__FUNCTION__<<std::endl;
+    se::variant<NonMovableThrower,std::string> v{"hello"};
+    try{
+        v.emplace<NonMovableThrower>(42);
+        assert(!"Should throw");
+    }
+    catch(CopyError&){}
+    assert(v.index()==1);
+    assert(se::get<1>(v)=="hello");
+}
+
+
 int main(){
     initial_is_empty();
     empty_index_is_neg_one();
@@ -920,4 +944,5 @@ int main(){
     maybe_throw_assign_to_variant_holding_type_with_throwing_move_ok();
     throwing_assign_from_type_leaves_variant_unchanged();
     can_emplace_nonmovable_type_when_other_nothrow_movable();
+    throwing_emplace_from_nonmovable_type_leaves_variant_unchanged();
 }
