@@ -929,7 +929,7 @@ struct NonMovableThrower{
 };
 
 
-void throwing_emplace_from_nonmovable_type_leaves_variant_unchanged(){
+void throwing_emplace_from_nonmovable_type_leaves_variant_empty(){
     std::cout<<__FUNCTION__<<std::endl;
     se::variant<NonMovableThrower,std::string> v{"hello"};
     try{
@@ -937,11 +937,10 @@ void throwing_emplace_from_nonmovable_type_leaves_variant_unchanged(){
         assert(!"Should throw");
     }
     catch(CopyError&){}
-    assert(v.index()==1);
-    assert(se::get<1>(v)=="hello");
+    assert(v.index()==-1);
 }
 
-void throwing_emplace_when_stored_type_can_throw_leaves_variant_unchanged(){
+void throwing_emplace_when_stored_type_can_throw_leaves_variant_empty(){
     std::cout<<__FUNCTION__<<std::endl;
     se::variant<NonMovableThrower,ThrowingCopy> v{
         se::emplaced_type_t<ThrowingCopy>()};
@@ -951,8 +950,7 @@ void throwing_emplace_when_stored_type_can_throw_leaves_variant_unchanged(){
         assert(!"Should throw");
     }
     catch(CopyError&){}
-    assert(v.index()==1);
-    assert(se::get<1>(v).data==21);
+    assert(v.index()==-1);
 }
 
 struct MayThrowA{
@@ -996,11 +994,11 @@ void after_assignment_which_triggers_backup_storage_can_assign_variant(){
 
 void backup_storage_and_local_backup(){
     std::cout<<__FUNCTION__<<std::endl;
-    se::variant<std::string,NonMovableThrower> v{"hello"};
+    se::variant<std::string,ThrowingCopy> v{"hello"};
     assert(v.index()==0);
     assert(se::get<0>(v)=="hello");
     try{
-        v.emplace<NonMovableThrower>(42);
+        v=ThrowingCopy();
         assert(!"Should throw");
     }
     catch(CopyError&){}
@@ -1116,8 +1114,8 @@ int main(){
     maybe_throw_assign_to_variant_holding_type_with_throwing_move_ok();
     throwing_assign_from_type_leaves_variant_unchanged();
     can_emplace_nonmovable_type_when_other_nothrow_movable();
-    throwing_emplace_from_nonmovable_type_leaves_variant_unchanged();
-    throwing_emplace_when_stored_type_can_throw_leaves_variant_unchanged();
+    throwing_emplace_from_nonmovable_type_leaves_variant_empty();
+    throwing_emplace_when_stored_type_can_throw_leaves_variant_empty();
     after_assignment_which_triggers_backup_storage_can_assign_variant();
     backup_storage_and_local_backup();
     large_noexcept_movable_and_small_throw_movable();

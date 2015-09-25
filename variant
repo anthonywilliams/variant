@@ -1405,13 +1405,13 @@ public:
 
     template<typename _Type,typename ... _Args>
     void emplace(_Args&& ... __args){
-        __replace_construct<__type_index<_Type,_Types...>::__value>(
+        __direct_replace<__type_index<_Type,_Types...>::__value>(
             std::forward<_Args>(__args)...);
     }
     
     template<ptrdiff_t _Index,typename ... _Args>
     void emplace(_Args&& ... __args){
-        __replace_construct<_Index>(std::forward<_Args>(__args)...);
+        __direct_replace<_Index>(std::forward<_Args>(__args)...);
     }
     
     constexpr bool empty() const noexcept{
