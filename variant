@@ -569,9 +569,6 @@ struct __destroy_op_table<_Variant,__index_sequence<_Indices...>>{
         if(__self->__index>=0){
             __self->__storage.__destroy(emplaced_index_t<_Index>());
         }
-        else if(__self->__index<-1){
-            __self->__alt_destroy(emplaced_index_t<_Index>());
-        }
     }
 
     static constexpr __func_type __apply[sizeof...(_Indices)]={
@@ -855,7 +852,7 @@ struct __replace_construct_helper::__helper<
 
     template<typename _Variant,typename ... _Args>
     static void __trampoline(_Variant& __v,_Args&& ... __args){
-        __v.template __backup_replace<_Index>(std::forward<_Args>(__args)...);
+        __v.template __direct_replace<_Index>(std::forward<_Args>(__args)...);
     }
 };
 
@@ -996,154 +993,10 @@ struct __backup_storage{
     }
 };
 
-template<ptrdiff_t _Index,typename ... _Types>
-struct __alternative_storage_size{
-    static const size_t __value=
-        __backup_storage_required<_Index,_Types...>::__value?
-        sizeof(__variant_data<typename __indexed_type<_Index,_Types...>::__type>):
-        0;
-};
-
-template<ptrdiff_t _Index,size_t _Count,typename ... _Types>
-struct __alternative_storage_required_size_impl{
-    static const size_t __this_size=
-        __alternative_storage_size<_Index,_Types...>::__value;
-    static const size_t __rest_size=
-        __alternative_storage_required_size_impl<_Index+1,_Count-1,_Types...>::__value;
-    static const size_t __value=(__this_size>__rest_size)?__this_size:__rest_size;
-};
-
-template<ptrdiff_t _Index,typename ... _Types>
-struct __alternative_storage_required_size_impl<_Index,0,_Types...>{
-    static const size_t __value=0;
-};
-
-template<typename ... _Types>
-struct __alternative_storage_required_size{
-    static const size_t __value=
-        __alternative_storage_required_size_impl<0,sizeof...(_Types),_Types...>::__value;
-};
-
-template<size_t __storage_size,typename _Type>
-struct __fits_alternative_storage{
-    static const bool __value=sizeof(__variant_data<_Type>)<=__storage_size;
-};
-
-
-template<size_t __storage_size,typename  _Type,
-         bool=__fits_alternative_storage<__storage_size,_Type>::__value>
-struct __alternative_data_entry{
-    typedef empty_t __type;
-};
-
-template<size_t __storage_size,typename  _Type>
-struct __alternative_data_entry<__storage_size,_Type,true>{
-    typedef _Type __type;
-};
-
-template<size_t __storage_size,typename ... _Types>
-struct __alternative_data{
-    typedef __variant_data<
-        typename __alternative_data_entry<__storage_size,_Types>::__type...> __type;
-    template<ptrdiff_t _Index>
-    struct __entry{
-        typedef typename __indexed_type<
-            _Index,
-            typename __alternative_data_entry<__storage_size,_Types>::__type...>
-        ::__type __type;
-    };
-};
-
-template<typename _Variant,bool=__any_backup_storage_required<_Variant>::__value>
-struct __alternative_storage_base;
-
-template<typename ... _Types>
-struct __alternative_storage_base<variant<_Types...>,false>{
-    static const size_t __alternative_storage_size=0;
-
-    template<ptrdiff_t _Index>
-    constexpr typename __indexed_type<_Index,_Types...>::__type const& __alt_get(
-        emplaced_index_t<_Index>) const{
-        return *(false?(typename __indexed_type<_Index,_Types...>::__type*)0:
-                 throw bad_variant_access("Access to alternative storage for a variant that doesn't have any"));
-    }
-    template<ptrdiff_t _Index>
-    typename __indexed_type<_Index,_Types...>::__type& __alt_get(
-        emplaced_index_t<_Index>){
-        throw bad_variant_access("Access to alternative storage for a variant that doesn't have any");
-    }
-    template<ptrdiff_t _Index>
-    void __alt_destroy(emplaced_index_t<_Index>){
-        throw bad_variant_access("Access to alternative storage for a variant that doesn't have any");
-    }
-};
-
-template<ptrdiff_t _Index,typename _Storage,typename _AccessType,bool _IsValid>
-struct __alternative_storage_accessor{
-    static constexpr _AccessType const& __get(
-        _Storage const&,emplaced_index_t<_Index>){
-        return *(false?(_AccessType const*)0:
-                 throw bad_variant_access("Access to alternative storage for a variant that doesn't have any"));
-    }
-    static constexpr _AccessType& __get(
-        _Storage&,emplaced_index_t<_Index>){
-        return *(false?(_AccessType*)0:
-                 throw bad_variant_access("Access to alternative storage for a variant that doesn't have any"));
-    }
-};
-
-template<ptrdiff_t _Index,typename _Storage,typename _AccessType>
-struct __alternative_storage_accessor<_Index,_Storage,_AccessType,true>{
-    static constexpr _AccessType const& __get(
-        _Storage const& __storage,emplaced_index_t<_Index>){
-        return __storage.__get(emplaced_index_t<_Index>());
-    }
-    static constexpr _AccessType& __get(
-        _Storage& __storage,emplaced_index_t<_Index>){
-        return __storage.__get(emplaced_index_t<_Index>());
-    }
-};
-
-template<typename ... _Types>
-struct __alternative_storage_base<variant<_Types...>,true>{
-    static const size_t __alternative_storage_size=
-        __alternative_storage_required_size<_Types...>::__value;
-    typedef __alternative_data<__alternative_storage_size,_Types...> __alt_data;
-    typedef typename __alt_data::__type __storage_type;
-    __storage_type __alternative_storage;
-
-    template<ptrdiff_t _Index>
-    constexpr typename __indexed_type<_Index,_Types...>::__type const& __alt_get(
-        emplaced_index_t<_Index>) const{
-        typedef typename __indexed_type<_Index,_Types...>::__type __access_type;
-        typedef typename __alt_data::template __entry<_Index>::__type __stored_type;
-        return __alternative_storage_accessor<
-            _Index,__storage_type,__access_type,
-            std::is_same<__access_type,__stored_type>::value>::__get(
-                __alternative_storage,emplaced_index_t<_Index>());
-    }
-    template<ptrdiff_t _Index>
-    typename __indexed_type<_Index,_Types...>::__type& __alt_get(
-        emplaced_index_t<_Index>){
-        typedef typename __indexed_type<_Index,_Types...>::__type __access_type;
-        typedef typename __alt_data::template __entry<_Index>::__type __stored_type;
-        return __alternative_storage_accessor<
-            _Index,__storage_type,__access_type,
-            std::is_same<__access_type,__stored_type>::value>::__get(
-                __alternative_storage,emplaced_index_t<_Index>());
-    }
-
-    template<ptrdiff_t _Index>
-    void __alt_destroy(emplaced_index_t<_Index>){
-        __alternative_storage.__destroy(emplaced_index_t<_Index>());
-    }
-};
-
 template<typename ... _Types>
 class variant:
         private __variant_base<
-    variant<_Types...>,__all_trivially_destructible<_Types...>::__value>,
-        private __alternative_storage_base<variant<_Types...> >
+    variant<_Types...>,__all_trivially_destructible<_Types...>::__value>
 {
     typedef __variant_base<variant<_Types...>,__all_trivially_destructible<_Types...>::__value> __base_type;
     friend __base_type;
@@ -1196,20 +1049,13 @@ class variant:
     template<ptrdiff_t _Index,typename ... _Args>
     void __replace_construct(_Args&& ... __args){
         typedef typename __indexed_type<_Index,_Types...>::__type __this_type;
-        static const bool __fits_in_storage=
-            __fits_alternative_storage<
-                __alternative_storage_base<
-                    variant<_Types...> >::__alternative_storage_size,
-            __this_type>::__value;
         __replace_construct_helper::__helper<
             _Index,
             __storage_nothrow_constructible<__this_type,_Args...>::__value ||
             (sizeof...(_Types)==1),
-            __storage_nothrow_move_constructible<__this_type>::__value &&
-            !__fits_in_storage,
+            __storage_nothrow_move_constructible<__this_type>::__value,
             __other_storage_nothrow_move_constructible<
-                _Index,_Types...>::__value  &&
-            !__fits_in_storage
+                _Index,_Types...>::__value
             >::__trampoline(*this,std::forward<_Args>(__args)...);
     }
 
@@ -1234,27 +1080,10 @@ class variant:
     }
     
     template<ptrdiff_t _Index,typename ... _Args>
-    void __backup_replace(_Args&& ... __args){
-        if(__index<0){
-            __emplace_construct<_Index>(std::forward<_Args>(__args)...);
-            __index=_Index;
-        }
-        else{
-            new(&this->__alternative_storage) __storage_type(
-                emplaced_index_t<_Index>(),std::forward<_Args>(__args)...);
-            __index=-2-_Index;
-        }
-    }
-
-    template<ptrdiff_t _Index,typename ... _Args>
     void __direct_replace(_Args&& ... __args) {
         __destroy_self();
         __emplace_construct<_Index>(std::forward<_Args>(__args)...);
         __index=_Index;
-    }
-
-    constexpr bool __using_alt_storage() const noexcept{
-        return __index<-1;
     }
 
 public:
@@ -1381,7 +1210,7 @@ public:
         return __index==-1;
     }
     constexpr ptrdiff_t index() const noexcept{
-        return __using_alt_storage()?(-__index-2):__index;
+        return __index;
     }
 
     void swap(variant& __other){
@@ -1399,14 +1228,10 @@ template<ptrdiff_t _Index,typename ... _Types>
 struct __variant_accessor{
     typedef typename __indexed_type<_Index,_Types...>::__type __type;
     static constexpr __type& get(variant<_Types...>& __v){
-        return __v.__using_alt_storage()?
-            __v.__alt_get(emplaced_index_t<_Index>()):
-            __v.__storage.__get(emplaced_index_t<_Index>());
+        return __v.__storage.__get(emplaced_index_t<_Index>());
     }
     static constexpr __type const& get(variant<_Types...> const& __v){
-        return __v.__using_alt_storage()?
-            __v.__alt_get(emplaced_index_t<_Index>()):
-            __v.__storage.__get(emplaced_index_t<_Index>());
+        return __v.__storage.__get(emplaced_index_t<_Index>());
     }
 };
 
