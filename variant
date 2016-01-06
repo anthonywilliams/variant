@@ -1209,7 +1209,7 @@ class variant:
     }
     
     void __destroy_self(){
-        if(empty())
+        if(valueless_by_exception())
             return;
         __destroy_op_table<variant>::__apply[index()](this);
         __index=-1;
@@ -1363,7 +1363,7 @@ public:
     }
 
     variant& operator=(variant const& __other){
-        if(__other.empty()){
+        if(__other.valueless_by_exception()){
             __destroy_self();
         }
         else if(__other.index()==index()){
@@ -1376,7 +1376,7 @@ public:
         return *this;
     }
     variant& operator=(variant& __other){
-        if(__other.empty()){
+        if(__other.valueless_by_exception()){
             __destroy_self();
         }
         else if(__other.index()==index()){
@@ -1389,7 +1389,7 @@ public:
         return *this;
     }
     variant& operator=(variant&& __other){
-        if(__other.empty()){
+        if(__other.valueless_by_exception()){
             __destroy_self();
         }
         else if(__other.index()==index()){
@@ -1414,7 +1414,7 @@ public:
         __direct_replace<_Index>(std::forward<_Args>(__args)...);
     }
     
-    constexpr bool empty() const noexcept{
+    constexpr bool valueless_by_exception() const noexcept{
         return __index==-1;
     }
     constexpr ptrdiff_t index() const noexcept{
@@ -1423,7 +1423,7 @@ public:
 
     void swap(variant& __other){
         if(__other.index()==index()){
-            if(!empty())
+            if(!valueless_by_exception())
                 __swap_op_table<variant>::__apply[index()](*this,__other);
         }
         else{
@@ -1553,7 +1553,7 @@ constexpr typename __visitor_table<_Visitor,_Types...>::__func_type __visitor_ta
 template<typename _Visitor,typename ... _Types>
 typename __visitor_return_type<_Visitor,_Types...>::__type
 visit(_Visitor&& __visitor,variant<_Types...>& __v){
-    if(__v.empty())
+    if(__v.valueless_by_exception())
         throw bad_variant_access("Visiting of empty variant");
     return __visitor_table<_Visitor,_Types...>::__trampoline[__v.index()](__visitor,__v);
 }

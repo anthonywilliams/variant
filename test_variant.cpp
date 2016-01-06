@@ -12,7 +12,7 @@ namespace se=std::experimental;
 void initial_is_empty(){
     std::cout<<__FUNCTION__<<std::endl;
     se::variant<int> v;
-    assert(v.empty());
+    assert(v.valueless_by_exception());
 }
 
 void empty_index_is_neg_one(){
@@ -654,15 +654,15 @@ void constexpr_variant(){
     constexpr se::variant<int,double> v4(4.2);
     constexpr int i4=v4.index();
     assert(i4==1);
-    constexpr bool b4=v4.empty();
+    constexpr bool b4=v4.valueless_by_exception();
     assert(!b4);
     constexpr se::variant<int,double> v5;
     constexpr int i5=v5.index();
     assert(i5==-1);
-    constexpr bool b5=v5.empty();
+    constexpr bool b5=v5.valueless_by_exception();
     assert(b5);
     constexpr se::variant<> v6;
-    constexpr bool b6=v6.empty();
+    constexpr bool b6=v6.valueless_by_exception();
     assert(b6);
 }
 
@@ -687,20 +687,6 @@ struct VisitorISD{
     void operator()(std::string const& arg,int i2_){
         s=arg;
         i2=i2_;
-    }
-    void operator()(se::empty_t arg,double d_){
-        d=d_;
-    }
-    void operator()(se::empty_t arg,int i2_){
-        i2=i2_;
-    }
-    void operator()(int arg,se::empty_t){
-        i=arg;
-    }
-    void operator()(std::string const& arg,se::empty_t){
-        s=arg;
-    }
-    void operator()(se::empty_t,se::empty_t){
     }
 };
 
@@ -792,20 +778,20 @@ void can_emplace_empty(){
     std::cout<<__FUNCTION__<<std::endl;
     se::variant<int> v(42);
     v.emplace<se::empty_t>();
-    assert(v.empty());
+    assert(v.valueless_by_exception());
     se::variant<int,std::string> v2(42);
     v2.emplace<se::empty_t>();
-    assert(v2.empty());
+    assert(v2.valueless_by_exception());
 }
 
 void can_emplace_empty_by_index(){
     std::cout<<__FUNCTION__<<std::endl;
     se::variant<int> v(42);
     v.emplace<-1>();
-    assert(v.empty());
+    assert(v.valueless_by_exception());
     se::variant<int,std::string> v2(42);
     v2.emplace<-1>();
-    assert(v2.empty());
+    assert(v2.valueless_by_exception());
 }
 
 void direct_init_reference_member(){
