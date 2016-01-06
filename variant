@@ -84,27 +84,17 @@ struct __type_index{
         __type_index_helper<0,_Type,_Types...>::__value;
 };
 
-template<typename ... _Types>
-struct __type_index<empty_t,_Types...>{
-    static constexpr ptrdiff_t __value=-1;
-};
-
 template<ptrdiff_t _Index,typename ... _Types>
 struct __indexed_type;
-
-template<typename ... _Types>
-struct __indexed_type<-1,_Types...>{
-    typedef empty_t __type;
-};
-
-template<typename _Head,typename ... _Rest>
-struct __indexed_type<-1,_Head,_Rest...>{
-    typedef empty_t __type;
-};
 
 template<typename _Head,typename ... _Rest>
 struct __indexed_type<0,_Head,_Rest...>{
     typedef _Head __type;
+};
+
+template<typename _Head,typename ... _Rest>
+struct __indexed_type<-1,_Head,_Rest...>{
+    typedef void __type;
 };
 
 template<ptrdiff_t _Index,typename _Head,typename ... _Rest>
@@ -359,30 +349,14 @@ struct __variant_storage<_Type&,__b>{
 
 template<>
 union __variant_data<>{
-    empty_t __dummy;
-
-    constexpr __variant_data():
-        __dummy(){}
-
-    empty_t& __get(emplaced_index_t<-1>){
-        return __dummy;
-    }
-    constexpr const empty_t& __get(emplaced_index_t<-1>) const{
-        return __dummy;
-    }
+    constexpr __variant_data(){}
 };
 
 template<typename _Type>
 union __variant_data<_Type>{
-    empty_t __dummy;
     typename __variant_storage<_Type>::__type __val;
 
-    constexpr __variant_data():
-        __dummy(){}
-
-    template<typename ... _Args>
-    constexpr __variant_data(emplaced_index_t<-1>,_Args&& ... __args):
-        __dummy(std::forward<_Args>(__args)...){}
+    constexpr __variant_data(){}
 
     template<typename ... _Args>
     constexpr __variant_data(emplaced_index_t<0>,_Args&& ... __args):
@@ -393,12 +367,6 @@ union __variant_data<_Type>{
     }
     constexpr const _Type& __get(emplaced_index_t<0>) const{
         return __variant_storage<_Type>::__get(__val);
-    }
-    empty_t& __get(emplaced_index_t<-1>){
-        return __dummy;
-    }
-    constexpr const empty_t& __get(emplaced_index_t<-1>) const{
-        return __dummy;
     }
     void __destroy(emplaced_index_t<0>){
         __variant_storage<_Type>::__destroy(__val);
@@ -443,13 +411,6 @@ union __variant_data<_Head,_Rest...>{
         return __rest.__get(emplaced_index_t<_Index-1>());
     }
 
-    empty_t& __get(emplaced_index_t<-1>){
-        return __head.__get(emplaced_index_t<-1>());
-    }
-
-    constexpr const empty_t& __get(emplaced_index_t<-1>) const{
-        return __head.__get(emplaced_index_t<-1>());
-    }
     void __destroy(emplaced_index_t<0>){
         __head.__destroy(emplaced_index_t<0>());
     }
@@ -1451,16 +1412,6 @@ struct __variant_accessor{
 
 template<typename _Indices,typename _Type,typename _Variant>
 struct __get_by_type_helper;
-
-template<typename _Variant>
-struct __get_by_type_helper<__index_sequence<>,empty_t,_Variant>{
-    static constexpr empty_t& __get(_Variant& __v){
-        return get<-1>(__v);
-    }
-    static constexpr const empty_t& __get(const _Variant& __v){
-        return get<-1>(__v);
-    }
-};
 
 template<typename _Type,typename _Variant>
 struct __get_by_type_helper<__index_sequence<>,_Type,_Variant>{
