@@ -1026,6 +1026,19 @@ void construct_small_with_large_throwables(){
     std::cout<<"size of MayThrowB="<<sizeof(MayThrowB)<<std::endl;
 }
 
+void if_emplace_throws_variant_is_valueless(){
+    se::variant<int> v;
+    assert(!v.valueless_by_exception());
+    assert(v.index()==0);
+    try{
+        v.emplace<0>(ThrowingConversion());
+        assert(!"Conversion should throw");
+    }
+    catch(...){}
+    assert(v.index()==-1);
+    assert(v.valueless_by_exception());
+}
+
 int main(){
     initial_is_first_type();
     can_construct_first_type();
@@ -1090,4 +1103,5 @@ int main(){
     backup_storage_and_local_backup();
     large_noexcept_movable_and_small_throw_movable();
     construct_small_with_large_throwables();
+    if_emplace_throws_variant_is_valueless();
 }
