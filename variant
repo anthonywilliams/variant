@@ -1297,8 +1297,10 @@ class variant:
     }
 
 public:
-    constexpr variant() noexcept:
-        __index(-1)
+    constexpr variant()
+        noexcept(noexcept(typename __indexed_type<0,_Types...>::__type())):
+        __storage(emplaced_index_t<0>()),
+        __index(0)
     {}
 
     constexpr variant(variant&& __other):

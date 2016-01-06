@@ -9,25 +9,12 @@
 
 namespace se=std::experimental;
 
-void initial_is_empty(){
+void initial_is_first_type(){
     std::cout<<__FUNCTION__<<std::endl;
     se::variant<int> v;
-    assert(v.valueless_by_exception());
-}
-
-void empty_index_is_neg_one(){
-    std::cout<<__FUNCTION__<<std::endl;
-    se::variant<int> v;
-    assert(v.index()==-1);
-}
-
-void get_empty_t_works_for_empty(){
-    std::cout<<__FUNCTION__<<std::endl;
-    se::variant<int> v;
-
-    se::empty_t& e1=se::get<se::empty_t>(v);
-    se::empty_t& e2=se::get<se::empty_t>(v);
-    assert(&e1==&e2);
+    assert(!v.valueless_by_exception());
+    assert(v.index()==0);
+    assert(se::get<int>(v)==0);
 }
 
 void can_construct_first_type(){
@@ -180,6 +167,22 @@ void copy_assignment_same_type(){
     assert(se::get<CopyCounter>(v2).move_assign==0);
 }
 
+struct ThrowingConversion{
+    template<typename T>
+    operator T() const{
+        throw 42;
+    }
+};
+
+template<typename V>
+void empty_variant(V& v){
+    try{
+        v.template emplace<0>(ThrowingConversion());
+    }
+    catch(int){}
+    assert(v.valueless_by_exception());
+}
+
 void copy_assignment_to_empty(){
     std::cout<<__FUNCTION__<<std::endl;
     CopyCounter cc;
@@ -191,6 +194,7 @@ void copy_assignment_to_empty(){
     assert(se::get<CopyCounter>(v).move_assign==0);
 
     se::variant<CopyCounter> v2;
+    empty_variant(v2);
     v2=v;
     assert(v.index()==0);
     assert(v2.index()==0);
@@ -219,7 +223,7 @@ unsigned InstanceCounter::instances=0;
 void copy_assignment_of_diff_types_destroys_old(){
     std::cout<<__FUNCTION__<<std::endl;
     se::variant<InstanceCounter,int> v;
-    assert(InstanceCounter::instances==0);
+    assert(InstanceCounter::instances==1);
     v=se::variant<InstanceCounter,int>(InstanceCounter());
     assert(v.index()==0);
     assert(InstanceCounter::instances==1);
@@ -239,6 +243,7 @@ void copy_assignment_from_empty(){
     assert(v.index()==0);
     assert(InstanceCounter::instances==1);
     se::variant<InstanceCounter,int> v2;
+    empty_variant(v2);
     v=v2;
     assert(v.index()==-1);
     assert(v2.index()==-1);
@@ -288,6 +293,7 @@ void move_assignment_to_empty(){
     assert(se::get<CopyCounter>(v).move_assign==0);
 
     se::variant<CopyCounter> v2;
+    empty_variant(v2);
     v2=std::move(v);
     assert(v.index()==-1);
     assert(v2.index()==0);
@@ -320,6 +326,7 @@ void move_assignment_same_type(){
 void move_assignment_of_diff_types_destroys_old(){
     std::cout<<__FUNCTION__<<std::endl;
     se::variant<InstanceCounter,CopyCounter> v;
+    empty_variant(v);
     assert(InstanceCounter::instances==0);
     v=se::variant<InstanceCounter,CopyCounter>(InstanceCounter());
     assert(v.index()==0);
@@ -341,6 +348,7 @@ void move_assignment_from_empty(){
     assert(v.index()==0);
     assert(InstanceCounter::instances==1);
     se::variant<InstanceCounter,int> v2;
+    empty_variant(v2);
     v=std::move(v2);
     assert(v.index()==-1);
     assert(v2.index()==-1);
@@ -368,9 +376,9 @@ void emplace_construction_by_index(){
 void holds_alternative_for_empty_variant(){
     std::cout<<__FUNCTION__<<std::endl;
     se::variant<int,double> v;
+    empty_variant(v);
     assert(!se::holds_alternative<int>(v));
     assert(!se::holds_alternative<double>(v));
-    assert(se::holds_alternative<se::empty_t>(v));
 }
 
 void holds_alternative_for_non_empty_variant(){
@@ -378,7 +386,6 @@ void holds_alternative_for_non_empty_variant(){
     se::variant<int,double> v(2.3);
     assert(!se::holds_alternative<int>(v));
     assert(se::holds_alternative<double>(v));
-    assert(!se::holds_alternative<se::empty_t>(v));
 }
 
 void assignment_from_value_to_empty(){
@@ -539,6 +546,8 @@ void swap_different_types(){
 void assign_empty_to_empty(){
     std::cout<<__FUNCTION__<<std::endl;
     se::variant<int> v1,v2;
+    empty_variant(v1);
+    empty_variant(v2);
     v1=v2;
     assert(v1.index()==-1);
     assert(v2.index()==-1);
@@ -547,6 +556,8 @@ void assign_empty_to_empty(){
 void swap_empties(){
     std::cout<<__FUNCTION__<<std::endl;
     se::variant<int> v1,v2;
+    empty_variant(v1);
+    empty_variant(v2);
     v1.swap(v2);
     assert(v1.index()==-1);
     assert(v2.index()==-1);
@@ -579,6 +590,7 @@ void visit(){
     assert(s=="hello");
     try{
         se::variant<int,std::string> v2;
+        empty_variant(v2);
         se::visit(visitor,v2);
         assert(!"Visiting empty should throw");
     }
@@ -658,12 +670,9 @@ void constexpr_variant(){
     assert(!b4);
     constexpr se::variant<int,double> v5;
     constexpr int i5=v5.index();
-    assert(i5==-1);
+    assert(i5==0);
     constexpr bool b5=v5.valueless_by_exception();
-    assert(b5);
-    constexpr se::variant<> v6;
-    constexpr bool b6=v6.valueless_by_exception();
-    assert(b6);
+    assert(!b5);
 }
 
 struct VisitorISD{
@@ -717,6 +726,7 @@ void multivisitor(){
     assert(i2==37);
 
     se::variant<double,int> v3;
+    empty_variant(v3);
     try{
         se::visit(visitor,v,v3);
         assert(!"Visiting empty should throw");
@@ -726,8 +736,6 @@ void multivisitor(){
 
 void sizes(){
     std::cout<<__FUNCTION__<<std::endl;
-    std::cout<<"empty_t:"<<sizeof(se::empty_t)<<std::endl;
-    std::cout<<"variant<>:"<<sizeof(se::variant<>)<<std::endl;
     std::cout<<"variant<char>:"<<sizeof(se::variant<char>)<<std::endl;
     std::cout<<"variant<char,int>:"<<sizeof(se::variant<char,int>)<<std::endl;
     std::cout<<"int:"<<sizeof(int)<<std::endl;
@@ -772,26 +780,6 @@ void non_movable_types(){
     se::get<0>(v).i=37;
     v.emplace<NonMovable>();
     assert(se::get<0>(v).i==42);
-}
-
-void can_emplace_empty(){
-    std::cout<<__FUNCTION__<<std::endl;
-    se::variant<int> v(42);
-    v.emplace<se::empty_t>();
-    assert(v.valueless_by_exception());
-    se::variant<int,std::string> v2(42);
-    v2.emplace<se::empty_t>();
-    assert(v2.valueless_by_exception());
-}
-
-void can_emplace_empty_by_index(){
-    std::cout<<__FUNCTION__<<std::endl;
-    se::variant<int> v(42);
-    v.emplace<-1>();
-    assert(v.valueless_by_exception());
-    se::variant<int,std::string> v2(42);
-    v2.emplace<-1>();
-    assert(v2.valueless_by_exception());
 }
 
 void direct_init_reference_member(){
@@ -1039,9 +1027,7 @@ void construct_small_with_large_throwables(){
 }
 
 int main(){
-    initial_is_empty();
-    empty_index_is_neg_one();
-    get_empty_t_works_for_empty();
+    initial_is_first_type();
     can_construct_first_type();
     can_get_value_of_first_type();
     can_construct_second_type();
@@ -1086,8 +1072,6 @@ int main(){
     sizes();
     duplicate_types();
     non_movable_types();
-    can_emplace_empty();
-    can_emplace_empty_by_index();
     direct_init_reference_member();
     reference_types_preferred_for_lvalue();
     construction_with_conversion();
