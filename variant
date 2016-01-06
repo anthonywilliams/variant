@@ -46,8 +46,6 @@
 namespace std{
 namespace experimental{
 
-struct empty_t{};
-
 template<typename _Type>
 struct emplaced_type_t{};
 
@@ -274,23 +272,19 @@ struct __variant_storage{
     static void __destroy(__type&){}
 };
 
-struct __dummy_base{
-    template<typename _Type>
-    constexpr __dummy_base(_Type){}
-};
-
 template<typename _Type>
-struct __storage_wrapper:__dummy_base{
+struct __storage_wrapper{
     typename std::aligned_storage<sizeof(_Type),alignof(_Type)>::type __storage;
 
     template<typename ... _Args>
-    static constexpr empty_t __construct(void* __p,_Args&& ... __args){
-        return new (__p) _Type(std::forward<_Args>(__args)...),empty_t();
+    static constexpr void __construct(void* __p,_Args&& ... __args){
+        new (__p) _Type(std::forward<_Args>(__args)...);
     }
 
     template<typename ... _Args>
-    constexpr __storage_wrapper(_Args&& ... __args):
-        __dummy_base(__construct(&__storage,std::forward<_Args>(__args)...)){}
+    __storage_wrapper(_Args&& ... __args){
+        __construct(&__storage,std::forward<_Args>(__args)...);
+    }
 
     _Type& __get(){
         return *static_cast<_Type*>(static_cast<void*>(&__storage));
