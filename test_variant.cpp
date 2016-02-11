@@ -828,11 +828,25 @@ void multi_visitor_with_non_void_return(){
     assert(visit([](auto i,auto j){return i+j;},v,v2)==46.2);
 }
 
+typedef se::variant< std::vector< int >, std::vector< double > > vv;
+unsigned foo(vv v){
+    return v.index();
+}
+
 void initialization_with_initializer_list(){
     std::cout<<__FUNCTION__<<std::endl;
     se::variant<std::vector<int>> v{1,2,3,4};
     assert(v.index()==0);
     assert(se::get<0>(v).size()==4);
+
+    assert(foo({ 1, 2, 3 })==0); // OK
+    assert(foo({ 1.2, 3.4, 5.6 })==1); // OK
+
+    // se::variant< char, std::string > q { { 999 } }; // error: can’t deduce T.
+    se::variant< char, std::string > r = { 999 }; // valid, but overflows.
+    se::variant< char, std::string > s = { 'a', 'b', 'c' }; // error.
+
+
 }
 
 struct vector_type;
