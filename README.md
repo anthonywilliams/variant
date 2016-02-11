@@ -1,11 +1,14 @@
 # README #
 
-This is an implementation of a C++ `variant` class. It is based on N4542, but it provides the strong
-guarantee for assignment rather than putting the variant in an invalid state if an exception is
-thrown. This is done using `noexcept` move operations and/or space-optimized double-buffering.
+This is an implementation of a C++ `variant` class, based on N4542, and then
+P0088R1 following the WG21 meeting in Kona.
 
-There is also an explicit empty state with an `index()` of -1. You can also check for the empty
-state with `std::experimental::has_alternative<std::experimental::empty_t>(v)`.
+The default constructor default-constructs the first type. If the first type
+isn't default-constructible then there is no default constructor.
+
+If a copy or move or emplace assignment operation throws then the variant is put
+in a special "valueless by exception" state, which can be queried with
+`valueless_by_exception()`.
 
 It has been tested with gcc 4.9 on Ubuntu Linux.
 
