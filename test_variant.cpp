@@ -326,6 +326,7 @@ void move_assignment_same_type(){
 void move_assignment_of_diff_types_destroys_old(){
     std::cout<<__FUNCTION__<<std::endl;
     se::variant<InstanceCounter,CopyCounter> v;
+    assert(InstanceCounter::instances==1);
     empty_variant(v);
     assert(InstanceCounter::instances==0);
     v=se::variant<InstanceCounter,CopyCounter>(InstanceCounter());

@@ -281,9 +281,22 @@ struct __storage_wrapper{
         new (__p) _Type(std::forward<_Args>(__args)...);
     }
 
-    template<typename ... _Args>
-    __storage_wrapper(_Args&& ... __args){
-        __construct(&__storage,std::forward<_Args>(__args)...);
+    template <typename _Dummy = _Type>
+    __storage_wrapper(
+        typename std::enable_if<std::is_default_constructible<_Dummy>::value,
+        void (__storage_wrapper::*)()>::type = nullptr) {
+      __construct(&__storage);
+    }
+
+    template <typename _Dummy = _Type>
+    __storage_wrapper(
+        typename std::enable_if<!std::is_default_constructible<_Dummy>::value,
+        void (__storage_wrapper::*)()>::type = nullptr) {
+    }
+    
+    template<typename _First,typename ... _Args>
+    __storage_wrapper(_First&& __first,_Args&& ... __args){
+        __construct(&__storage,std::forward<_First>(__first),std::forward<_Args>(__args)...);
     }
 
     _Type& __get(){
@@ -349,8 +362,9 @@ union __variant_data<>{
 template<typename _Type>
 union __variant_data<_Type>{
     typename __variant_storage<_Type>::__type __val;
+    struct __dummy_type{} __dummy;
 
-    constexpr __variant_data(){}
+    constexpr __variant_data():__dummy(){}
 
     template<typename ... _Args>
     constexpr __variant_data(emplaced_index_t<0>,_Args&& ... __args):
@@ -462,16 +476,16 @@ struct __move_construct_op_table<_Variant,__index_sequence<_Indices...>>{
             std::move(get<_Index>(__rhs)));
     }
 
-    static constexpr __func_type __apply[sizeof...(_Indices)]={
-        &__move_construct_func<_Indices>...
-    };
+    static const __func_type __apply[sizeof...(_Indices)];
 };
 
 template<typename _Variant,ptrdiff_t ... _Indices>
-constexpr typename __move_construct_op_table<_Variant,__index_sequence<_Indices...>>::
+const typename __move_construct_op_table<_Variant,__index_sequence<_Indices...>>::
 __func_type
 __move_construct_op_table<_Variant,__index_sequence<_Indices...>>::__apply[
-    sizeof...(_Indices)];
+    sizeof...(_Indices)]={
+        &__move_construct_func<_Indices>...
+    };
 
 template<typename _Variant,
          typename _Indices=typename __variant_indices<_Variant>::__type>
@@ -487,16 +501,16 @@ struct __move_assign_op_table<_Variant,__index_sequence<_Indices...>>{
         get<_Index>(*__lhs)=std::move(get<_Index>(__rhs));
     }
 
-    static constexpr __func_type __apply[sizeof...(_Indices)]={
-        &__move_assign_func<_Indices>...
-    };
+    static const __func_type __apply[sizeof...(_Indices)];
 };
 
 template<typename _Variant,ptrdiff_t ... _Indices>
-constexpr typename __move_assign_op_table<_Variant,__index_sequence<_Indices...>>::
+const typename __move_assign_op_table<_Variant,__index_sequence<_Indices...>>::
 __func_type
 __move_assign_op_table<_Variant,__index_sequence<_Indices...>>::__apply[
-    sizeof...(_Indices)];
+    sizeof...(_Indices)]={
+        &__move_assign_func<_Indices>...
+    };
 
 template<typename _Variant,
          typename _Indices=typename __variant_indices<_Variant>::__type>
@@ -513,16 +527,16 @@ struct __copy_construct_op_table<_Variant,__index_sequence<_Indices...>>{
             get<_Index>(__rhs));
     }
 
-    static constexpr __func_type __apply[sizeof...(_Indices)]={
-        &__copy_construct_func<_Indices>...
-    };
+    static const __func_type __apply[sizeof...(_Indices)];
 };
 
 template<typename _Variant,ptrdiff_t ... _Indices>
-constexpr typename __copy_construct_op_table<_Variant,__index_sequence<_Indices...>>::
+const typename __copy_construct_op_table<_Variant,__index_sequence<_Indices...>>::
 __func_type
 __copy_construct_op_table<_Variant,__index_sequence<_Indices...>>::__apply[
-    sizeof...(_Indices)];
+    sizeof...(_Indices)]={
+        &__copy_construct_func<_Indices>...
+    };
 
 template<typename _Variant,
          typename _Indices=typename __variant_indices<_Variant>::__type>
@@ -538,16 +552,16 @@ struct __copy_assign_op_table<_Variant,__index_sequence<_Indices...>>{
         get<_Index>(*__lhs)=get<_Index>(__rhs);
     }
 
-    static constexpr __func_type __apply[sizeof...(_Indices)]={
-        &__copy_assign_func<_Indices>...
-    };
+    static const __func_type __apply[sizeof...(_Indices)];
 };
 
 template<typename _Variant,ptrdiff_t ... _Indices>
-constexpr typename __copy_assign_op_table<_Variant,__index_sequence<_Indices...>>::
+const typename __copy_assign_op_table<_Variant,__index_sequence<_Indices...>>::
 __func_type
 __copy_assign_op_table<_Variant,__index_sequence<_Indices...>>::__apply[
-    sizeof...(_Indices)];
+    sizeof...(_Indices)]={
+        &__copy_assign_func<_Indices>...
+    };
 
 template<typename _Variant,
          typename _Indices=typename __variant_indices<_Variant>::__type>
@@ -565,16 +579,16 @@ struct __destroy_op_table<_Variant,__index_sequence<_Indices...>>{
         }
     }
 
-    static constexpr __func_type __apply[sizeof...(_Indices)]={
-        &__destroy_func<_Indices>...
-    };
+    static const __func_type __apply[sizeof...(_Indices)];
 };
 
 template<typename _Variant,ptrdiff_t ... _Indices>
-constexpr typename __destroy_op_table<_Variant,__index_sequence<_Indices...>>::
+const typename __destroy_op_table<_Variant,__index_sequence<_Indices...>>::
 __func_type
 __destroy_op_table<_Variant,__index_sequence<_Indices...>>::__apply[
-    sizeof...(_Indices)];
+    sizeof...(_Indices)]={
+        &__destroy_func<_Indices>...
+    };
 
 template<typename _Variant,
          typename _Indices=typename __variant_indices<_Variant>::__type>
@@ -590,16 +604,16 @@ struct __swap_op_table<_Variant,__index_sequence<_Indices...>>{
         swap(get<_Index>(__lhs),get<_Index>(__rhs));
     }
 
-    static constexpr __func_type __apply[sizeof...(_Indices)]={
-        &__swap_func<_Indices>...
-    };
+    static const __func_type __apply[sizeof...(_Indices)];
 };
 
 template<typename _Variant,ptrdiff_t ... _Indices>
-constexpr typename __swap_op_table<_Variant,__index_sequence<_Indices...>>::
+const typename __swap_op_table<_Variant,__index_sequence<_Indices...>>::
 __func_type
 __swap_op_table<_Variant,__index_sequence<_Indices...>>::__apply[
-    sizeof...(_Indices)];
+    sizeof...(_Indices)]={
+        &__swap_func<_Indices>...
+    };
 
 template<typename _Variant,
          typename _Indices=typename __variant_indices<_Variant>::__type>
@@ -615,16 +629,16 @@ struct __equality_op_table<_Variant,__index_sequence<_Indices...>>{
         return get<_Index>(__lhs)==get<_Index>(__rhs);
     }
 
-    static constexpr __compare_func_type __equality_compare[sizeof...(_Indices)]={
-        &__equality_compare_func<_Indices>...
-    };
+    static const __compare_func_type __equality_compare[sizeof...(_Indices)];
 };
 
 template<typename _Variant,ptrdiff_t ... _Indices>
-constexpr typename __equality_op_table<_Variant,__index_sequence<_Indices...>>::
+const typename __equality_op_table<_Variant,__index_sequence<_Indices...>>::
 __compare_func_type
 __equality_op_table<_Variant,__index_sequence<_Indices...>>::__equality_compare[
-    sizeof...(_Indices)];
+    sizeof...(_Indices)]={
+        &__equality_compare_func<_Indices>...
+    };
 
 template<typename _Variant,
          typename _Indices=typename __variant_indices<_Variant>::__type>
@@ -640,16 +654,16 @@ struct __less_than_op_table<_Variant,__index_sequence<_Indices...>>{
         return get<_Index>(__lhs)<get<_Index>(__rhs);
     }
 
-    static constexpr __compare_func_type __less_than_compare[sizeof...(_Indices)]={
-        &__less_than_compare_func<_Indices>...
-    };
+    static const __compare_func_type __less_than_compare[sizeof...(_Indices)];
 };
 
 template<typename _Variant,ptrdiff_t ... _Indices>
-constexpr typename __less_than_op_table<_Variant,__index_sequence<_Indices...>>::
+const typename __less_than_op_table<_Variant,__index_sequence<_Indices...>>::
 __compare_func_type
 __less_than_op_table<_Variant,__index_sequence<_Indices...>>::__less_than_compare[
-    sizeof...(_Indices)];
+    sizeof...(_Indices)]={
+        &__less_than_compare_func<_Indices>...
+    };
 
 template<typename _Variant>
 struct __variant_storage_type;
@@ -867,27 +881,27 @@ struct __replace_construct_helper::__op_table<_Variant,__index_sequence<_Indices
         __lhs->template __replace_construct<_Index>(get<_Index>(__rhs));
     }
     
-    static constexpr __func_type __move_assign[sizeof...(_Indices)]={
-        &__move_assign_func<_Indices>...
-    };
-    static constexpr __func_type __copy_assign[sizeof...(_Indices)]={
-        &__copy_assign_func<_Indices>...
-    };
+    static const __func_type __move_assign[sizeof...(_Indices)];
+    static const __func_type __copy_assign[sizeof...(_Indices)];
 };
 
 template<typename _Variant,ptrdiff_t ... _Indices>
-constexpr typename __replace_construct_helper::__op_table<
+const typename __replace_construct_helper::__op_table<
     _Variant,__index_sequence<_Indices...>>::__func_type
 __replace_construct_helper::__op_table<
     _Variant,__index_sequence<_Indices...>>::__move_assign[
-    sizeof...(_Indices)];
+    sizeof...(_Indices)]={
+        &__move_assign_func<_Indices>...
+    };
 
 template<typename _Variant,ptrdiff_t ... _Indices>
-constexpr typename __replace_construct_helper::__op_table<
+const typename __replace_construct_helper::__op_table<
     _Variant,__index_sequence<_Indices...>>::__func_type
 __replace_construct_helper::__op_table<
     _Variant,__index_sequence<_Indices...>>::__copy_assign[
-    sizeof...(_Indices)];
+    sizeof...(_Indices)]={
+        &__copy_assign_func<_Indices>...
+    };
 
 template<ptrdiff_t _Index,ptrdiff_t _MaskIndex,typename _Storage>
 struct __backup_storage_ops{
@@ -928,27 +942,27 @@ struct __backup_storage_op_table<
         typedef __backup_storage_ops<_Index,_MaskIndex,_Storage> __ops;
     };
 
-    static constexpr __move_func_type __move_ops[sizeof...(_Indices)]={
-        &__helper<_Indices>::__ops::__move_construct_func...
-    };
-    static constexpr __destroy_func_type __destroy_ops[sizeof...(_Indices)]={
-        &__helper<_Indices>::__ops::__destroy_func...
-    };
+    static const __move_func_type __move_ops[sizeof...(_Indices)];
+    static const __destroy_func_type __destroy_ops[sizeof...(_Indices)];
 };
 
 template<ptrdiff_t _MaskIndex,typename _Storage,ptrdiff_t ... _Indices>
-constexpr typename __backup_storage_op_table<
+const typename __backup_storage_op_table<
     _MaskIndex,_Storage,__index_sequence<_Indices...> >::__move_func_type
 __backup_storage_op_table<
     _MaskIndex,_Storage,__index_sequence<_Indices...> >::__move_ops[
-        sizeof...(_Indices)];
+        sizeof...(_Indices)]={
+        &__helper<_Indices>::__ops::__move_construct_func...
+    };
 
 template<ptrdiff_t _MaskIndex,typename _Storage,ptrdiff_t ... _Indices>
-constexpr typename __backup_storage_op_table<
+const typename __backup_storage_op_table<
     _MaskIndex,_Storage,__index_sequence<_Indices...> >::__destroy_func_type
 __backup_storage_op_table<
     _MaskIndex,_Storage,__index_sequence<_Indices...> >::__destroy_ops[
-    sizeof...(_Indices)];
+    sizeof...(_Indices)]={
+        &__helper<_Indices>::__ops::__destroy_func...
+    };
 
 template<ptrdiff_t _Index,typename ... _Types>
 struct __backup_storage{
@@ -1314,13 +1328,13 @@ struct __visitor_table{
         return __visitor(get<_Type>(__v));
     }
 
-    static constexpr __func_type __trampoline[sizeof...(_Types)]={
-        &__trampoline_func<_Types>...
-    };
+    static const __func_type __trampoline[sizeof...(_Types)];
 };
 
 template<typename _Visitor,typename ... _Types>
-constexpr typename __visitor_table<_Visitor,_Types...>::__func_type __visitor_table<_Visitor,_Types...>::__trampoline[sizeof...(_Types)];
+const typename __visitor_table<_Visitor,_Types...>::__func_type __visitor_table<_Visitor,_Types...>::__trampoline[sizeof...(_Types)]={
+        &__trampoline_func<_Types>...
+    };
 
 template<typename _Visitor,typename ... _Types>
 typename __visitor_return_type<_Visitor,_Types...>::__type
