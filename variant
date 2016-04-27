@@ -872,7 +872,8 @@ struct __replace_construct_helper::__helper<
 
 template<typename _Variant,ptrdiff_t ... _Indices>
 struct __replace_construct_helper::__op_table<_Variant,__index_sequence<_Indices...>>{
-    typedef void(* const __func_type)(_Variant*,_Variant&);
+    typedef void(* const __move_func_type)(_Variant*,_Variant&);
+    typedef void(* const __copy_func_type)(_Variant*,_Variant const&);
     
     template<ptrdiff_t _Index>
     static void __move_assign_func(
@@ -883,17 +884,17 @@ struct __replace_construct_helper::__op_table<_Variant,__index_sequence<_Indices
 
     template<ptrdiff_t _Index>
     static void __copy_assign_func(
-        _Variant * __lhs,_Variant& __rhs){
+        _Variant * __lhs,_Variant const& __rhs){
         __lhs->template __replace_construct<_Index>(get<_Index>(__rhs));
     }
     
-    static const __func_type __move_assign[sizeof...(_Indices)];
-    static const __func_type __copy_assign[sizeof...(_Indices)];
+    static const __move_func_type __move_assign[sizeof...(_Indices)];
+    static const __copy_func_type __copy_assign[sizeof...(_Indices)];
 };
 
 template<typename _Variant,ptrdiff_t ... _Indices>
 const typename __replace_construct_helper::__op_table<
-    _Variant,__index_sequence<_Indices...>>::__func_type
+    _Variant,__index_sequence<_Indices...>>::__move_func_type
 __replace_construct_helper::__op_table<
     _Variant,__index_sequence<_Indices...>>::__move_assign[
     sizeof...(_Indices)]={
@@ -902,7 +903,7 @@ __replace_construct_helper::__op_table<
 
 template<typename _Variant,ptrdiff_t ... _Indices>
 const typename __replace_construct_helper::__op_table<
-    _Variant,__index_sequence<_Indices...>>::__func_type
+    _Variant,__index_sequence<_Indices...>>::__copy_func_type
 __replace_construct_helper::__op_table<
     _Variant,__index_sequence<_Indices...>>::__copy_assign[
     sizeof...(_Indices)]={

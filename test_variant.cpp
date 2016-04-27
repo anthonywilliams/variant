@@ -234,6 +234,15 @@ void copy_assignment_of_diff_types_destroys_old(){
     assert(se::get<int>(v2)==42);
     assert(se::get<int>(v)==42);
     assert(InstanceCounter::instances==0);
+    v=se::variant<InstanceCounter,int>(InstanceCounter());
+    assert(InstanceCounter::instances==1);
+    se::variant<InstanceCounter,int> const v3(42);
+    v=v3;
+    assert(v.index()==1);
+    assert(v3.index()==1);
+    assert(se::get<int>(v3)==42);
+    assert(se::get<int>(v)==42);
+    assert(InstanceCounter::instances==0);
     std::cout<<__FUNCTION__<<" done"<<std::endl;
 }
 
