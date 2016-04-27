@@ -43,6 +43,12 @@
 #include <utility>
 #include <limits.h>
 
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable:4521)
+#pragma warning(disable:4522)
+#endif
+
 namespace std{
 namespace experimental{
 
@@ -1494,5 +1500,9 @@ bool operator>=(variant<_Types...> const& __lhs,variant<_Types...> const& __rhs)
 
 }
 }
+
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 
 #endif
