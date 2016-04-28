@@ -1126,13 +1126,17 @@ public:
             emplaced_index_t<__type_index<_Type,_Types...>::__value>(),
             std::forward<_Args>(__args)...),
         __index(__type_index<_Type,_Types...>::__value)
-    {}
+    {
+        static_assert(std::is_constructible<_Type,_Args...>::value,"Type must be constructible from args");
+    }
 
     template<ptrdiff_t _Index,typename ... _Args>
     explicit constexpr variant(emplaced_index_t<_Index>,_Args&& ... __args):
         __storage(emplaced_index_t<_Index>(),std::forward<_Args>(__args)...),
         __index(_Index)
-    {}
+    {
+        static_assert(std::is_constructible<typename __indexed_type<_Index,_Types...>::__type,_Args...>::value,"Type must be constructible from args");
+    }
     
     template<typename _Type>
     constexpr variant(_Type&& __x):
