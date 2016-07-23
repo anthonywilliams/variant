@@ -6,6 +6,7 @@
 #include <iostream>
 #include <array>
 #include <tuple>
+#include <mutex>
 
 namespace se=std::experimental;
 
@@ -1063,6 +1064,16 @@ void if_emplace_throws_variant_is_valueless(){
     assert(v.valueless_by_exception());
 }
 
+void properties(){
+
+    // std::cout<<!std::is_default_constructible<se::variant<>>::value<<std::endl;
+    // std::cout<< std::is_copy_constructible<se::variant<>>::value<<std::endl;  // or should this be false?
+    std::cout<<std::is_copy_constructible<se::variant<int>>::value<<std::endl;
+    std::cout<<!std::is_copy_constructible<se::variant<std::mutex,int>>::value<<std::endl;
+    std::cout<<!std::is_move_constructible<se::variant<std::mutex,int>>::value<<std::endl;
+    std::cout<< std::is_nothrow_move_constructible<se::variant<std::string>>::value<<std::endl;
+}
+
 int main(){
     initial_is_first_type();
     can_construct_first_type();
@@ -1128,4 +1139,7 @@ int main(){
     large_noexcept_movable_and_small_throw_movable();
     construct_small_with_large_throwables();
     if_emplace_throws_variant_is_valueless();
+
+    properties();
+    
 }

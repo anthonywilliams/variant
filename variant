@@ -1009,6 +1009,88 @@ struct __backup_storage{
 };
 
 template<typename ... _Types>
+struct __all_move_constructible;
+
+template<typename _Head,typename ... _Rest>
+struct __all_move_constructible<_Head,_Rest...>
+{
+    static constexpr bool value=std::is_move_constructible<_Head>::value && __all_move_constructible<_Rest...>::value;
+};
+
+template<>
+struct __all_move_constructible<>:
+    std::true_type{};
+
+template<bool _MoveConstructible,typename ... _Types>
+struct __noexcept_variant_move_construct_impl{};
+
+template<typename _Head,typename ... _Rest>
+struct __noexcept_variant_move_construct_impl<true,_Head,_Rest...>{
+    static constexpr bool value=noexcept(_Head(std::declval<_Head&&>())) && __noexcept_variant_move_construct_impl<true,_Rest...>::value;
+};
+
+template<>
+struct __noexcept_variant_move_construct_impl<true>{
+    static constexpr bool value=true;
+};
+
+template<typename ... _Types>
+struct __noexcept_variant_move_construct:
+__noexcept_variant_move_construct_impl<__all_move_constructible<_Types...>::value,_Types...>
+{};
+
+
+template<typename ... _Types>
+struct __all_copy_constructible;
+
+template<typename _Head,typename ... _Rest>
+struct __all_copy_constructible<_Head,_Rest...>
+{
+    static constexpr bool value=std::is_copy_constructible<_Head>::value && __all_copy_constructible<_Rest...>::value;
+};
+
+template<>
+struct __all_copy_constructible<>:
+    std::true_type{};
+
+template<bool _CopyConstructible,typename ... _Types>
+struct __noexcept_variant_const_copy_construct_impl{};
+
+template<typename _Head,typename ... _Rest>
+struct __noexcept_variant_const_copy_construct_impl<true,_Head,_Rest...>{
+    static constexpr bool value=noexcept(_Head(std::declval<_Head const&>())) && __noexcept_variant_const_copy_construct_impl<true,_Rest...>::value;
+};
+
+template<>
+struct __noexcept_variant_const_copy_construct_impl<true>{
+    static constexpr bool value=true;
+};
+
+template<typename ... _Types>
+struct __noexcept_variant_const_copy_construct:
+__noexcept_variant_const_copy_construct_impl<__all_copy_constructible<_Types...>::value,_Types...>
+{};
+
+template<bool _CopyNon_Constructible,typename ... _Types>
+struct __noexcept_variant_non_const_copy_construct_impl{};
+
+template<typename _Head,typename ... _Rest>
+struct __noexcept_variant_non_const_copy_construct_impl<true,_Head,_Rest...>{
+    static constexpr bool value=noexcept(_Head(std::declval<_Head&>())) && __noexcept_variant_non_const_copy_construct_impl<true,_Rest...>::value;
+};
+
+template<>
+struct __noexcept_variant_non_const_copy_construct_impl<true>{
+    static constexpr bool value=true;
+};
+
+template<typename ... _Types>
+struct __noexcept_variant_non_const_copy_construct:
+__noexcept_variant_non_const_copy_construct_impl<__all_copy_constructible<_Types...>::value,_Types...>
+{};
+
+
+template<typename ... _Types>
 class variant:
         private __variant_base<
     variant<_Types...>,__all_trivially_destructible<_Types...>::__value>
@@ -1101,6 +1183,8 @@ class variant:
         __index=_Index;
     }
 
+    struct __private_type{};
+
 public:
     constexpr variant()
         noexcept(noexcept(typename __indexed_type<0,_Types...>::__type())):
@@ -1108,18 +1192,27 @@ public:
         __index(0)
     {}
 
-    constexpr variant(variant&& __other):
+    constexpr variant(typename std::conditional<__all_move_constructible<_Types...>::value,variant,__private_type>::type&& __other)
+    noexcept(__noexcept_variant_move_construct<_Types...>::value):
         __index(__move_construct(__other))
     {}
 
-    constexpr variant(variant& __other):
+    constexpr variant(typename std::conditional<!__all_move_constructible<_Types...>::value,variant,__private_type>::type&& __other)=delete;
+    
+    constexpr variant(typename std::conditional<__all_copy_constructible<_Types...>::value,variant,__private_type>::type& __other)
+    noexcept(__noexcept_variant_non_const_copy_construct<_Types...>::value):
         __index(__copy_construct(__other))
     {}
 
-    constexpr variant(variant const& __other):
+    constexpr variant(typename std::conditional<!__all_copy_constructible<_Types...>::value,variant,__private_type>::type& __other)=delete;
+
+    constexpr variant(typename std::conditional<__all_copy_constructible<_Types...>::value,variant,__private_type>::type const& __other)
+    noexcept(__noexcept_variant_const_copy_construct<_Types...>::value):
         __index(__copy_construct(__other))
     {}
 
+    constexpr variant(typename std::conditional<!__all_copy_constructible<_Types...>::value,variant,__private_type>::type const& __other)=delete;
+    
     template<typename _Type,typename ... _Args>
     explicit constexpr variant(emplaced_type_t<_Type>,_Args&& ... __args):
         __storage(
