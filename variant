@@ -58,6 +58,11 @@ struct emplaced_type_t{};
 template<ptrdiff_t _Index>
 struct emplaced_index_t{};
 
+template<ptrdiff_t _Index>
+constexpr emplaced_index_t<_Index> in_place(){
+    return emplaced_index_t<_Index>();
+}
+
 class bad_variant_access: public std::logic_error{
 public:
     explicit bad_variant_access(const std::string& what_arg):
@@ -349,13 +354,26 @@ struct __variant_storage<_Type,false>{
 
 template<typename _Type,bool __b>
 struct __variant_storage<_Type&,__b>{
-    typedef __storage_wrapper<_Type&> __type;
+    typedef _Type* __type;
 
     static constexpr _Type& __get(__type& __val){
-        return __val.__get();
+        return *__val;
     }
-    static constexpr const _Type& __get(__type const& __val){
-        return __val.__get();
+    static constexpr _Type& __get(__type const& __val){
+        return *__val;
+    }
+    static void __destroy(__type&){}
+};
+
+template<typename _Type,bool __b>
+struct __variant_storage<_Type&&,__b>{
+    typedef _Type* __type;
+
+    static constexpr _Type&& __get(__type& __val){
+        return static_cast<_Type&&>(*__val);
+    }
+    static constexpr _Type&& __get(__type const& __val){
+        return static_cast<_Type&&>(*__val);
     }
     static void __destroy(__type&){}
 };
@@ -384,6 +402,50 @@ union __variant_data<_Type>{
     }
     void __destroy(emplaced_index_t<0>){
         __variant_storage<_Type>::__destroy(__val);
+    }
+};
+
+template<typename _Type>
+union __variant_data<_Type&>{
+    typename __variant_storage<_Type&>::__type __val;
+    struct __dummy_type{} __dummy;
+
+    constexpr __variant_data():__dummy(){}
+
+    template<typename ... _Args>
+    constexpr __variant_data(emplaced_index_t<0>,_Args&& ... __args):
+        __val(&std::forward<_Args>(__args)...){}
+
+    _Type& __get(emplaced_index_t<0>){
+        return __variant_storage<_Type&>::__get(__val);
+    }
+    constexpr _Type& __get(emplaced_index_t<0>) const{
+        return __variant_storage<_Type&>::__get(__val);
+    }
+    void __destroy(emplaced_index_t<0>){
+        __variant_storage<_Type&>::__destroy(__val);
+    }
+};
+
+template<typename _Type>
+union __variant_data<_Type&&>{
+    typename __variant_storage<_Type&&>::__type __val;
+    struct __dummy_type{} __dummy;
+
+    constexpr __variant_data():__dummy(){}
+
+    template<typename _Arg>
+    __variant_data(emplaced_index_t<0>,_Arg&& __arg):
+        __val(&__arg){}
+
+    _Type&& __get(emplaced_index_t<0>){
+        return __variant_storage<_Type&&>::__get(__val);
+    }
+    constexpr _Type&& __get(emplaced_index_t<0>) const{
+        return __variant_storage<_Type&&>::__get(__val);
+    }
+    void __destroy(emplaced_index_t<0>){
+        __variant_storage<_Type&&>::__destroy(__val);
     }
 };
 
@@ -791,6 +853,11 @@ struct __type_index_to_construct{
         typename std::remove_const<
             typename std::remove_reference<_Type>::type
             >::type,_Types...>::__type __value_matches;
+    typedef typename __all_indices<
+        _Type,
+        typename std::remove_const<
+            typename std::remove_reference<_Types>::type
+            >::type...>::__type __rref_matches;
 
     typedef typename __constructible_matches<_Type,_Types...>::__type
     __constructibles;
@@ -798,11 +865,12 @@ struct __type_index_to_construct{
     static_assert(
         (__direct_matches::__length>0) ||
         (__value_matches::__length>0) ||
+        (__rref_matches::__length>0) ||
         (__constructibles::__length==1),
         "For conversion construction of variants, exactly one type must be constructible");
     
     typedef typename __combine_sequences<
-        __direct_matches,__value_matches,
+        __direct_matches,__value_matches,__rref_matches,
         __constructibles>::__type __all_matches;
     
     static constexpr ptrdiff_t __value=__first_index<__all_matches>::__value;
@@ -1441,7 +1509,7 @@ const typename __visitor_table<_Visitor,_Types...>::__func_type __visitor_table<
     };
 
 template<typename _Visitor,typename ... _Types>
-typename __visitor_return_type<_Visitor,_Types...>::__type
+constexpr typename __visitor_return_type<_Visitor,_Types...>::__type
 visit(_Visitor&& __visitor,variant<_Types...>& __v){
     if(__v.valueless_by_exception())
         throw bad_variant_access("Visiting of empty variant");
@@ -1460,7 +1528,7 @@ struct __visit_helper;
 template<ptrdiff_t ... _Indices>
 struct __visit_helper<0,__index_sequence<_Indices...>>{
     template<typename _Visitor,typename ... _Variants>
-    static typename __multi_visitor_return_type<_Visitor,_Variants...>::__type
+    static constexpr typename __multi_visitor_return_type<_Visitor,_Variants...>::__type
     __visit(_Visitor& __visitor,_Variants& ... __v){
         return __visitor(get<_Indices>(__v)...);
     }
@@ -1473,7 +1541,7 @@ template<typename _Head,typename ... _Rest>
 struct __arg_selector_t<0,_Head,_Rest...>{
     typedef _Head __type;
 
-    static __type& __select(_Head& __head,_Rest& ...){
+    static constexpr __type& __select(_Head& __head,_Rest& ...){
         return __head;
     }
 };
@@ -1481,13 +1549,13 @@ struct __arg_selector_t<0,_Head,_Rest...>{
 template<size_t _Index,typename _Head,typename ... _Rest>
 struct __arg_selector_t<_Index,_Head,_Rest...>{
     typedef typename __arg_selector_t<_Index-1,_Rest...>::__type __type;
-    static __type& __select(_Head&,_Rest& ... __rest){
+    static constexpr __type& __select(_Head&,_Rest& ... __rest){
         return __arg_selector_t<_Index-1,_Rest...>::__select(__rest...);
     }
 };
 
 template<size_t _Index,typename ... _Args>
-typename __arg_selector_t<_Index,_Args...>::__type&& __arg_selector(_Args&& ... __args){
+constexpr typename __arg_selector_t<_Index,_Args...>::__type&& __arg_selector(_Args&& ... __args){
     return std::forward<typename __arg_selector_t<_Index,_Args...>::__type>(
         __arg_selector_t<_Index,_Args...>::__select(__args...));
 }
@@ -1495,7 +1563,7 @@ typename __arg_selector_t<_Index,_Args...>::__type&& __arg_selector(_Args&& ... 
 template<ptrdiff_t _Index,size_t _VariantIndex,ptrdiff_t ... _Indices>
 struct __visit_helper2{
     template<typename _Visitor,typename ... _Variants>
-    static typename __multi_visitor_return_type<_Visitor,_Variants...>::__type
+    static constexpr typename __multi_visitor_return_type<_Visitor,_Variants...>::__type
     __visit(_Visitor& __visitor,_Variants&& ... __v){
         if(__arg_selector<_VariantIndex-1>(__v...).index()==_Index){
             return __visit_helper<
@@ -1513,7 +1581,7 @@ struct __visit_helper2{
 template<size_t _VariantIndex,ptrdiff_t ... _Indices>
 struct __visit_helper2<-1,_VariantIndex,_Indices...>{
     template<typename _Visitor,typename ... _Variants>
-    static typename __multi_visitor_return_type<_Visitor,_Variants...>::__type
+    static constexpr typename __multi_visitor_return_type<_Visitor,_Variants...>::__type
     __visit(_Visitor& __visitor,_Variants&& ... __v){
         throw bad_variant_access("Visiting of empty variant");
     }
@@ -1541,7 +1609,7 @@ template<size_t _VariantIndex,ptrdiff_t ... _Indices>
 struct __visit_helper<_VariantIndex,__index_sequence<_Indices...>>{
 
     template<typename _Visitor,typename ... _Variants>
-    static typename __multi_visitor_return_type<_Visitor,_Variants...>::__type
+    static constexpr typename __multi_visitor_return_type<_Visitor,_Variants...>::__type
     __visit(_Visitor& __visitor,_Variants&& ... __v){
         return __visit_helper2<
             __variant_type_count<
@@ -1553,7 +1621,7 @@ struct __visit_helper<_VariantIndex,__index_sequence<_Indices...>>{
 };
 
 template<typename _Visitor,typename ... _Variants>
-typename __multi_visitor_return_type<_Visitor,_Variants...>::__type
+constexpr typename __multi_visitor_return_type<_Visitor,_Variants...>::__type
 visit(_Visitor&& __visitor,_Variants&& ... __v){
     return __visit_helper<sizeof...(_Variants),__index_sequence<>>::__visit(
         __visitor,std::forward<_Variants>(__v)...);

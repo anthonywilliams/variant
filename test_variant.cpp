@@ -1074,6 +1074,14 @@ void properties(){
     static_assert( std::is_nothrow_move_constructible<se::variant<std::string>>::value);
 }
 
+void variant_of_references(){
+    static int i=42;
+    constexpr se::variant<int&> vi(i);
+    static_assert(&se::get<0>(vi)==&i);
+    constexpr se::variant<std::string&,int&> vi2(i);
+    static_assert(&se::get<1>(vi2)==&i);
+}
+
 int main(){
     initial_is_first_type();
     can_construct_first_type();
@@ -1141,5 +1149,6 @@ int main(){
     if_emplace_throws_variant_is_valueless();
 
     properties();
-    
+
+    variant_of_references();
 }
