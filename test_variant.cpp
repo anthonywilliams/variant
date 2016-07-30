@@ -1068,10 +1068,10 @@ void properties(){
 
     // std::cout<<!std::is_default_constructible<se::variant<>>::value<<std::endl;
     // std::cout<< std::is_copy_constructible<se::variant<>>::value<<std::endl;  // or should this be false?
-    std::cout<<std::is_copy_constructible<se::variant<int>>::value<<std::endl;
-    std::cout<<!std::is_copy_constructible<se::variant<std::mutex,int>>::value<<std::endl;
-    std::cout<<!std::is_move_constructible<se::variant<std::mutex,int>>::value<<std::endl;
-    std::cout<< std::is_nothrow_move_constructible<se::variant<std::string>>::value<<std::endl;
+    static_assert(std::is_copy_constructible<se::variant<int>>::value);
+    static_assert(!std::is_copy_constructible<se::variant<std::mutex,int>>::value);
+    static_assert(!std::is_move_constructible<se::variant<std::mutex,int>>::value);
+    static_assert( std::is_nothrow_move_constructible<se::variant<std::string>>::value);
 }
 
 int main(){
