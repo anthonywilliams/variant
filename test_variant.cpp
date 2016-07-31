@@ -1080,6 +1080,8 @@ void variant_of_references(){
     static_assert(&se::get<0>(vi)==&i);
     constexpr se::variant<std::string&,int&> vi2(i);
     static_assert(&se::get<1>(vi2)==&i);
+    constexpr se::variant<const int&> vi3(i);
+    static_assert(&se::get<0>(vi3)==&i);
 }
 
 int main(){
