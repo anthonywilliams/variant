@@ -1681,8 +1681,10 @@ public:
     }
 
     void swap(
-        typename std::conditional<__all_swappable<_Types...>::value, variant,
-                                  __private_type>::type
+        typename std::conditional<
+            __all_swappable<_Types...>::value &&
+                __all_move_constructible<_Types...>::value,
+            variant, __private_type>::type
             &__other) noexcept(__noexcept_variant_swap<_Types...>::value) {
         if (__other.index() == index()) {
             if(!valueless_by_exception())
@@ -1712,7 +1714,9 @@ public:
 };
 
 template <typename... _Types>
-typename std::enable_if<__all_swappable<_Types...>::value, void>::type
+typename std::enable_if<__all_swappable<_Types...>::value &&
+                            __all_move_constructible<_Types...>::value,
+                        void>::type
 swap(variant<_Types...> &__lhs, variant<_Types...> &__rhs) noexcept(
     __noexcept_variant_swap<_Types...>::value) {
     __lhs.swap(__rhs);
