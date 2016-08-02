@@ -1077,6 +1077,9 @@ void properties(){
     static_assert(!std::is_copy_assignable<se::variant<std::mutex,int>>::value);
     static_assert(std::is_move_assignable<se::variant<std::string,int>>::value);
     static_assert(std::is_copy_assignable<se::variant<std::string,int>>::value);
+    static_assert(std::is_nothrow_move_assignable<se::variant<std::string,int>>::value);
+    static_assert(std::is_move_assignable<se::variant<ThrowingCopy,int>>::value);
+    static_assert(!std::is_nothrow_move_assignable<se::variant<ThrowingCopy,int>>::value);
 }
 
 void variant_of_references(){

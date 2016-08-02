@@ -1275,6 +1275,28 @@ struct __noexcept_variant_move_construct:
 __noexcept_variant_move_construct_impl<__all_move_constructible<_Types...>::value,_Types...>
 {};
 
+template<bool _MoveAssignable,typename ... _Types>
+struct __noexcept_variant_move_assign_impl{};
+
+template <typename _Head, typename... _Rest>
+struct __noexcept_variant_move_assign_impl<true, _Head, _Rest...> {
+    static constexpr bool value =
+        std::is_nothrow_move_assignable<_Head>::value &&
+        std::is_nothrow_move_constructible<_Head>::value &&
+        __noexcept_variant_move_assign_impl<true, _Rest...>::value;
+};
+
+template<>
+struct __noexcept_variant_move_assign_impl<true>{
+    static constexpr bool value=true;
+};
+
+template <typename... _Types>
+struct __noexcept_variant_move_assign
+    : __noexcept_variant_move_assign_impl<
+          __all_move_assignable<_Types...>::value &&
+              __all_move_constructible<_Types...>::value,
+          _Types...> {};
 
 template<typename ... _Types>
 struct __all_copy_constructible;
@@ -1324,7 +1346,6 @@ template<typename ... _Types>
 struct __noexcept_variant_non_const_copy_construct:
 __noexcept_variant_non_const_copy_construct_impl<__all_copy_constructible<_Types...>::value,_Types...>
 {};
-
 
 template<typename ... _Types>
 class variant:
@@ -1561,7 +1582,8 @@ public:
     variant &operator=(
         typename std::conditional<__all_move_constructible<_Types...>::value &&
                                       __all_move_assignable<_Types...>::value,
-                                  variant, __private_type>::type &&__other) {
+                                  variant, __private_type>::type &&
+            __other) noexcept(__noexcept_variant_move_assign<_Types...>::value) {
         if (__other.valueless_by_exception()) {
             __destroy_self();
         }
