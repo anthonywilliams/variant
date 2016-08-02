@@ -1282,7 +1282,43 @@ void get_if(){
     static_assert(!se::get_if<int>(cvidc2));
     static_assert(!se::get_if<char>(cvidc2));
 
+    se::variant<int> vi(42);
+    se::variant<double,int,char> vidc(42);
+    se::variant<double,int,char> vidc2(4.2);
+
+    assert(se::get_if<0>(vi)==&se::get<0>(vi));
+    assert(se::get_if<int>(vi)==&se::get<0>(vi));
     
+    assert(!se::get_if<0>(vidc));
+    assert(se::get_if<1>(vidc)==&se::get<1>(vidc));
+    assert(!se::get_if<2>(vidc));
+    assert(!se::get_if<double>(vidc));
+    assert(se::get_if<int>(vidc)==&se::get<1>(vidc));
+    assert(!se::get_if<char>(vidc));
+
+    assert(se::get_if<double>(vidc2)==&se::get<0>(vidc2));
+    assert(!se::get_if<int>(vidc2));
+    assert(!se::get_if<char>(vidc2));
+}
+
+void constexpr_comparisons(){
+    constexpr se::variant<int,double,char> vi(42);
+    constexpr se::variant<int,double,char> vi2(21);
+    constexpr se::variant<int,double,char> vd(2.1);
+    constexpr se::variant<int,double,char> vd2(4.2);
+
+    static_assert(vi==vi);
+    static_assert(vi!=vi2);
+    static_assert(vi>vi2);
+    static_assert(vi>=vi2);
+    static_assert(vi2<vi);
+    static_assert(vi2<=vi);
+    static_assert(vd!=vd2);
+    static_assert(vd==vd);
+    static_assert(vd<vd2);
+    static_assert(vd<=vd2);
+    static_assert(vd2>vd);
+    static_assert(vd2>=vd);
 }
 
 int main(){
@@ -1359,4 +1395,5 @@ int main(){
     get_with_rvalues();
     get_with_const_rvalues();
     get_if();
+    constexpr_comparisons();
 }

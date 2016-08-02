@@ -828,21 +828,21 @@ struct __equality_op_table<_Variant,__index_sequence<_Indices...>>{
     typedef bool(* const __compare_func_type)(_Variant const&,_Variant const&);
     
     template<ptrdiff_t _Index>
-    static bool __equality_compare_func(
+    static constexpr bool __equality_compare_func(
         _Variant const& __lhs,_Variant const& __rhs){
         return get<_Index>(__lhs)==get<_Index>(__rhs);
     }
 
-    static const __compare_func_type __equality_compare[sizeof...(_Indices)];
+    static constexpr __compare_func_type __equality_compare[sizeof...(_Indices)]={
+        &__equality_compare_func<_Indices>...
+    };
 };
 
 template<typename _Variant,ptrdiff_t ... _Indices>
-const typename __equality_op_table<_Variant,__index_sequence<_Indices...>>::
+constexpr typename __equality_op_table<_Variant,__index_sequence<_Indices...>>::
 __compare_func_type
 __equality_op_table<_Variant,__index_sequence<_Indices...>>::__equality_compare[
-    sizeof...(_Indices)]={
-        &__equality_compare_func<_Indices>...
-    };
+    sizeof...(_Indices)];
 
 template<typename _Variant,
          typename _Indices=typename __variant_indices<_Variant>::__type>
@@ -853,21 +853,21 @@ struct __less_than_op_table<_Variant,__index_sequence<_Indices...>>{
     typedef bool(* const __compare_func_type)(_Variant const&,_Variant const&);
     
     template<ptrdiff_t _Index>
-    static bool __less_than_compare_func(
+    static constexpr bool __less_than_compare_func(
         _Variant const& __lhs,_Variant const& __rhs){
         return get<_Index>(__lhs)<get<_Index>(__rhs);
     }
 
-    static const __compare_func_type __less_than_compare[sizeof...(_Indices)];
+    static constexpr __compare_func_type __less_than_compare[sizeof...(_Indices)]={
+        &__less_than_compare_func<_Indices>...
+    };
 };
 
 template<typename _Variant,ptrdiff_t ... _Indices>
-const typename __less_than_op_table<_Variant,__index_sequence<_Indices...>>::
+constexpr typename __less_than_op_table<_Variant,__index_sequence<_Indices...>>::
 __compare_func_type
 __less_than_op_table<_Variant,__index_sequence<_Indices...>>::__less_than_compare[
-    sizeof...(_Indices)]={
-        &__less_than_compare_func<_Indices>...
-    };
+    sizeof...(_Indices)];
 
 template<typename _Variant>
 struct __variant_storage_type;
@@ -1783,7 +1783,7 @@ visit(_Visitor&& __visitor,_Variants&& ... __v){
 }
 
 template<typename ... _Types>
-bool operator==(variant<_Types...> const& __lhs,variant<_Types...> const& __rhs){
+constexpr bool operator==(variant<_Types...> const& __lhs,variant<_Types...> const& __rhs){
     return (__lhs.index()==__rhs.index()) &&
         ((__lhs.index()==-1) ||
          __equality_op_table<variant<_Types...>>::__equality_compare[__lhs.index()](
@@ -1791,12 +1791,12 @@ bool operator==(variant<_Types...> const& __lhs,variant<_Types...> const& __rhs)
 }
 
 template<typename ... _Types>
-bool operator!=(variant<_Types...> const& __lhs,variant<_Types...> const& __rhs){
+constexpr bool operator!=(variant<_Types...> const& __lhs,variant<_Types...> const& __rhs){
     return !(__lhs==__rhs);
 }
 
 template<typename ... _Types>
-bool operator<(variant<_Types...> const& __lhs,variant<_Types...> const& __rhs){
+constexpr bool operator<(variant<_Types...> const& __lhs,variant<_Types...> const& __rhs){
     return (__lhs.index()<__rhs.index()) ||
         ((__lhs.index()==__rhs.index()) &&
          ((__lhs.index()!=-1) &&
@@ -1805,17 +1805,17 @@ bool operator<(variant<_Types...> const& __lhs,variant<_Types...> const& __rhs){
 }
 
 template<typename ... _Types>
-bool operator>(variant<_Types...> const& __lhs,variant<_Types...> const& __rhs){
+constexpr bool operator>(variant<_Types...> const& __lhs,variant<_Types...> const& __rhs){
     return __rhs<__lhs;
 }
 
 template<typename ... _Types>
-bool operator<=(variant<_Types...> const& __lhs,variant<_Types...> const& __rhs){
-    return !(__rhs<__lhs);
+constexpr bool operator>=(variant<_Types...> const& __lhs,variant<_Types...> const& __rhs){
+    return !(__lhs<__rhs);
 }
 
 template<typename ... _Types>
-bool operator>=(variant<_Types...> const& __lhs,variant<_Types...> const& __rhs){
+constexpr bool operator<=(variant<_Types...> const& __lhs,variant<_Types...> const& __rhs){
     return !(__lhs>__rhs);
 }
 
