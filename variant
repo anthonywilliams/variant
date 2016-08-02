@@ -1256,6 +1256,37 @@ template<>
 struct __all_copy_assignable<>:
     std::true_type{};
 
+namespace __swap_test_detail{
+using std::swap;
+
+template<typename _Other>
+struct __swap_result{};
+
+template<typename>
+static char __test(...);
+template <typename _Other>
+static std::pair<char, std::pair<char, __swap_result<decltype(
+    swap(std::declval<_Other &>(),std::declval<_Other &>()))>>>
+__test(_Other *);
+}
+
+template <typename _Type> struct __is_swappable {
+    static constexpr bool value =
+        sizeof(__swap_test_detail::__test<_Type>(0)) != 1;
+};
+
+template<typename ... _Types>
+struct __all_swappable;
+
+template<typename _Head,typename ... _Rest>
+struct __all_swappable<_Head,_Rest...>
+{
+    static constexpr bool value=__is_swappable<_Head>::value && __all_swappable<_Rest...>::value;
+};
+
+template<>
+struct __all_swappable<>:
+    std::true_type{};
 
 template<bool _MoveConstructible,typename ... _Types>
 struct __noexcept_variant_move_construct_impl{};
@@ -1345,6 +1376,26 @@ struct __noexcept_variant_non_const_copy_construct_impl<true>{
 template<typename ... _Types>
 struct __noexcept_variant_non_const_copy_construct:
 __noexcept_variant_non_const_copy_construct_impl<__all_copy_constructible<_Types...>::value,_Types...>
+{};
+
+template<bool _Swappable,typename ... _Types>
+struct __noexcept_variant_swap_impl{};
+
+template <typename _Head, typename... _Rest>
+struct __noexcept_variant_swap_impl<true, _Head, _Rest...> {
+    static constexpr bool value =
+        noexcept(swap(std::declval<_Head&>(),std::declval<_Head&>())) &&
+        __noexcept_variant_swap_impl<true, _Rest...>::value;
+};
+
+template<>
+struct __noexcept_variant_swap_impl<true>{
+    static constexpr bool value=true;
+};
+
+template<typename ... _Types>
+struct __noexcept_variant_swap:
+__noexcept_variant_swap_impl<__all_swappable<_Types...>::value,_Types...>
 {};
 
 template<typename ... _Types>
@@ -1616,8 +1667,11 @@ public:
         return __index;
     }
 
-    void swap(variant& __other){
-        if(__other.index()==index()){
+    void swap(
+        typename std::conditional<__all_swappable<_Types...>::value, variant,
+                                  __private_type>::type
+            &__other) noexcept(__noexcept_variant_swap<_Types...>::value) {
+        if (__other.index() == index()) {
             if(!valueless_by_exception())
                 __swap_op_table<variant>::__apply[index()](*this,__other);
         }
@@ -1642,6 +1696,12 @@ public:
     void swap(variant&){}
 };
 
+template <typename... _Types>
+typename std::enable_if<__all_swappable<_Types...>::value, void>::type
+swap(variant<_Types...> &__lhs, variant<_Types...> &__rhs) noexcept(
+    __noexcept_variant_swap<_Types...>::value) {
+    __lhs.swap(__rhs);
+}
 
 template<ptrdiff_t _Index,typename ... _Types>
 struct __variant_accessor{

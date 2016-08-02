@@ -1,6 +1,6 @@
 .PHONY: test
 
-CXXFLAGS=-std=c++14 -Wall -g -O2
+CXXFLAGS=-std=c++1y -Wall -g -O2
 LDFLAGS=-g -O2
 ifdef CLANG
 CC=clang++-3.7

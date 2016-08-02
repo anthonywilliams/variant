@@ -1080,6 +1080,8 @@ void properties(){
     static_assert(std::is_nothrow_move_assignable<se::variant<std::string,int>>::value);
     static_assert(std::is_move_assignable<se::variant<ThrowingCopy,int>>::value);
     static_assert(!std::is_nothrow_move_assignable<se::variant<ThrowingCopy,int>>::value);
+    static_assert(!noexcept(se::variant<ThrowingCopy,int>().swap(std::declval<se::variant<ThrowingCopy,int>&>())));
+    static_assert(noexcept(se::variant<int,double>().swap(std::declval<se::variant<int,double>&>())));
 }
 
 void variant_of_references(){
