@@ -1264,6 +1264,7 @@ void get_with_const_rvalues(){
 }
 
 void get_if(){
+    std::cout<<__FUNCTION__<<std::endl;
     constexpr se::variant<int> cvi(42);
     constexpr se::variant<double,int,char> cvidc(42);
     constexpr se::variant<double,int,char> cvidc2(4.2);
@@ -1302,6 +1303,7 @@ void get_if(){
 }
 
 void constexpr_comparisons(){
+    std::cout<<__FUNCTION__<<std::endl;
     constexpr se::variant<int,double,char> vi(42);
     constexpr se::variant<int,double,char> vi2(21);
     constexpr se::variant<int,double,char> vd(2.1);
@@ -1319,6 +1321,29 @@ void constexpr_comparisons(){
     static_assert(vd<=vd2);
     static_assert(vd2>vd);
     static_assert(vd2>=vd);
+}
+
+struct Identity {
+    template <typename T> constexpr T operator()(T x) {
+        return x;
+    }
+};
+
+struct Sum {
+    template <typename T, typename U>
+    constexpr auto operator()(T x, U y) {
+        return x + y;
+    }
+};
+
+void constexpr_visit(){
+    std::cout<<__FUNCTION__<<std::endl;
+
+    constexpr se::variant<int,double> vi(42);
+    constexpr se::variant<int,double> vi2(21);
+
+    static_assert(se::visit(Identity(),vi)==42);
+    static_assert(se::visit(Sum(),vi,vi2)==63);
 }
 
 int main(){
@@ -1396,4 +1421,5 @@ int main(){
     get_with_const_rvalues();
     get_if();
     constexpr_comparisons();
+    constexpr_visit();
 }
