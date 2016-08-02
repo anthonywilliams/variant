@@ -1361,6 +1361,22 @@ void variant_with_no_types(){
     static_assert(!std::is_default_constructible<se::variant<>>::value);
 }
 
+void monostate(){
+    std::cout<<__FUNCTION__<<std::endl;
+    static_assert(std::is_trivial<se::monostate>::value);
+    static_assert(std::is_nothrow_move_constructible<se::monostate>::value);
+    static_assert(std::is_nothrow_copy_constructible<se::monostate>::value);
+    static_assert(std::is_nothrow_move_assignable<se::monostate>::value);
+    static_assert(std::is_nothrow_copy_assignable<se::monostate>::value);
+    constexpr se::monostate m1,m2;
+    static_assert(m1==m2);
+    static_assert(!(m1!=m2));
+    static_assert(m1>=m2);
+    static_assert(m1<=m2);
+    static_assert(!(m1<m2));
+    static_assert(!(m1>m2));
+}
+
 int main(){
     initial_is_first_type();
     can_construct_first_type();
@@ -1438,4 +1454,5 @@ int main(){
     constexpr_comparisons();
     constexpr_visit();
     variant_with_no_types();
+    monostate();
 }

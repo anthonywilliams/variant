@@ -1982,6 +1982,15 @@ constexpr bool operator<=(variant<_Types...> const& __lhs,variant<_Types...> con
     return !(__lhs>__rhs);
 }
 
+struct monostate{};
+
+constexpr inline bool operator==(monostate const&,monostate const&){ return true;}
+constexpr inline bool operator!=(monostate const&,monostate const&){ return false;}
+constexpr inline bool operator>=(monostate const&,monostate const&){ return true;}
+constexpr inline bool operator<=(monostate const&,monostate const&){ return true;}
+constexpr inline bool operator>(monostate const&,monostate const&){ return false;}
+constexpr inline bool operator<(monostate const&,monostate const&){ return false;}
+
 }
 }
 
