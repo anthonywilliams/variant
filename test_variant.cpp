@@ -1346,6 +1346,12 @@ void constexpr_visit(){
     static_assert(se::visit(Sum(),vi,vi2)==63);
 }
 
+void variant_with_no_types(){
+    std::cout<<__FUNCTION__<<std::endl;
+    static_assert(sizeof(se::variant<>)>0);
+    static_assert(!std::is_default_constructible<se::variant<>>::value);
+}
+
 int main(){
     initial_is_first_type();
     can_construct_first_type();
@@ -1422,4 +1428,5 @@ int main(){
     get_if();
     constexpr_comparisons();
     constexpr_visit();
+    variant_with_no_types();
 }
