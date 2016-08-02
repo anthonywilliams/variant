@@ -1052,6 +1052,7 @@ void construct_small_with_large_throwables(){
 }
 
 void if_emplace_throws_variant_is_valueless(){
+    std::cout<<__FUNCTION__<<std::endl;
     se::variant<int> v;
     assert(!v.valueless_by_exception());
     assert(v.index()==0);
@@ -1065,7 +1066,7 @@ void if_emplace_throws_variant_is_valueless(){
 }
 
 void properties(){
-
+    std::cout<<__FUNCTION__<<std::endl;
     // std::cout<<!std::is_default_constructible<se::variant<>>::value<<std::endl;
     // std::cout<< std::is_copy_constructible<se::variant<>>::value<<std::endl;  // or should this be false?
     static_assert(std::is_copy_constructible<se::variant<int>>::value);
@@ -1075,6 +1076,7 @@ void properties(){
 }
 
 void variant_of_references(){
+    std::cout<<__FUNCTION__<<std::endl;
     static int i=42;
     constexpr se::variant<int&> vi(i);
     static_assert(&se::get<0>(vi)==&i);
@@ -1085,6 +1087,7 @@ void variant_of_references(){
 }
 
 void variant_size(){
+    std::cout<<__FUNCTION__<<std::endl;
     static_assert(se::variant_size<se::variant<int>>::value==1);
     static_assert(se::variant_size<se::variant<int,double>>::value==2);
     static_assert(se::variant_size<se::variant<std::string,int,double>>::value==3);
@@ -1104,6 +1107,7 @@ void variant_size(){
 }
 
 void variant_alternative(){
+    std::cout<<__FUNCTION__<<std::endl;
     static_assert(std::is_same<se::variant_alternative<0,se::variant<int>>::type,int>::value);
     static_assert(std::is_same<se::variant_alternative<0,se::variant<int,std::string>>::type,int>::value);
     static_assert(std::is_same<se::variant_alternative<1,se::variant<int,std::string>>::type,std::string>::value);
@@ -1135,6 +1139,34 @@ void variant_alternative(){
     static_assert(std::is_same<se::variant_alternative<0,volatile se::variant<int&,std::string>>::type,int&>::value);
     static_assert(std::is_same<se::variant_alternative<2,volatile se::variant<int,std::string,const double&>>::type,const double&>::value);
     static_assert(std::is_same<se::variant_alternative_t<0,volatile se::variant<int,std::string,const double&>>,volatile int>::value);
+}
+
+void npos(){
+    std::cout<<__FUNCTION__<<std::endl;
+    static_assert(se::variant_npos==(size_t)-1);
+    static_assert(std::is_same<decltype(se::variant_npos),const size_t>::value);
+}
+
+void holds_alternative(){
+    std::cout<<__FUNCTION__<<std::endl;
+    constexpr se::variant<int> vi(42);
+    static_assert(se::holds_alternative<int>(vi));
+    constexpr se::variant<int,double> vi2(42);
+    static_assert(se::holds_alternative<int>(vi2));
+    static_assert(!se::holds_alternative<double>(vi2));
+    constexpr se::variant<int,double> vi3(4.2);
+    static_assert(!se::holds_alternative<int>(vi3));
+    static_assert(se::holds_alternative<double>(vi3));
+
+    const se::variant<int,double,std::string> vi4(42);
+    assert(se::holds_alternative<int>(vi4));
+    assert(!se::holds_alternative<double>(vi4));
+    assert(!se::holds_alternative<std::string>(vi4));
+
+    se::variant<int,double,std::string> vi5("hello42");
+    assert(!se::holds_alternative<int>(vi5));
+    assert(!se::holds_alternative<double>(vi5));
+    assert(se::holds_alternative<std::string>(vi5));
 }
 
 int main(){
@@ -1206,4 +1238,6 @@ int main(){
     variant_of_references();
     variant_size();
     variant_alternative();
+    npos();
+    holds_alternative();
 }
