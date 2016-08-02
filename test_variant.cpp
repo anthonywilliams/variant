@@ -1368,7 +1368,7 @@ void monostate(){
     static_assert(std::is_nothrow_copy_constructible<se::monostate>::value);
     static_assert(std::is_nothrow_move_assignable<se::monostate>::value);
     static_assert(std::is_nothrow_copy_assignable<se::monostate>::value);
-    constexpr se::monostate m1,m2;
+    constexpr se::monostate m1{},m2{};
     static_assert(m1==m2);
     static_assert(!(m1!=m2));
     static_assert(m1>=m2);

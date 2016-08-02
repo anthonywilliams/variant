@@ -76,10 +76,14 @@ using in_place_index_t = in_place_tag(&)(__in_place_private::__value_holder<_Ind
 in_place_tag in_place(__in_place_private&);
 
 template <class _Type>
-in_place_tag in_place(__in_place_private::__type_holder<_Type>&);
+in_place_tag in_place(__in_place_private::__type_holder<_Type> &) {
+    throw __in_place_private();
+}
 
 template <size_t _Index>
-in_place_tag in_place(__in_place_private::__value_holder<_Index>&);
+in_place_tag in_place(__in_place_private::__value_holder<_Index> &) {
+    throw __in_place_private();
+}
 
 class bad_variant_access: public std::logic_error{
 public:
@@ -589,10 +593,6 @@ union __variant_data<_Head,_Rest...>{
     constexpr __variant_data():
         __head(){}
 
-    template<typename ... _Args>
-    constexpr __variant_data(in_place_index_t<-1>,_Args&& ... __args):
-        __head(in_place<-1>,std::forward<_Args>(__args)...){}
-    
     template<typename ... _Args>
     constexpr __variant_data(in_place_index_t<0>,_Args&& ... __args):
         __head(in_place<0>,std::forward<_Args>(__args)...){}
