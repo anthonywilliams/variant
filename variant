@@ -424,13 +424,13 @@ struct __variant_storage<_Type&,__b>{
     static constexpr _Type& __get(__type& __val){
         return *__val;
     }
-    static constexpr _Type& __get_rref(__type&& __val){
+    static constexpr _Type& __get_rref(__type& __val){
         return *__val;
     }
     static constexpr _Type& __get(__type const& __val){
         return *__val;
     }
-    static constexpr const _Type& __get_rref(__type const&& __val){
+    static constexpr _Type& __get_rref(__type const& __val){
         return *__val;
     }
     static void __destroy(__type&){}
@@ -505,6 +505,14 @@ union __variant_data<_Type&>{
     constexpr _Type& __get(emplaced_index_t<0>) const{
         return __variant_storage<_Type&>::__get(__val);
     }
+
+    _Type& __get_rref(emplaced_index_t<0>){
+        return __variant_storage<_Type&>::__get_rref(__val);
+    }
+    constexpr _Type& __get_rref(emplaced_index_t<0>) const{
+        return __variant_storage<_Type&>::__get_rref(__val);
+    }
+    
     void __destroy(emplaced_index_t<0>){
         __variant_storage<_Type&>::__destroy(__val);
     }
@@ -526,6 +534,12 @@ union __variant_data<_Type&&>{
     }
     constexpr _Type&& __get(emplaced_index_t<0>) const{
         return __variant_storage<_Type&&>::__get(__val);
+    }
+    _Type&& __get_rref(emplaced_index_t<0>){
+        return __variant_storage<_Type&&>::__get_rref(__val);
+    }
+    constexpr _Type&& __get_rref(emplaced_index_t<0>) const{
+        return __variant_storage<_Type&&>::__get_rref(__val);
     }
     void __destroy(emplaced_index_t<0>){
         __variant_storage<_Type&&>::__destroy(__val);

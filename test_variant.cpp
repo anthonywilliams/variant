@@ -1172,6 +1172,8 @@ void holds_alternative(){
 void get_with_rvalues(){
     std::cout<<__FUNCTION__<<std::endl;
 
+    int i=42;
+
     static_assert(se::get<0>(se::variant<int>(42))==42);
     static_assert(std::is_same<decltype(se::get<0>(se::variant<int>(42))),int&&>::value);
     static_assert(se::get<int>(se::variant<int>(42))==42);
@@ -1181,6 +1183,22 @@ void get_with_rvalues(){
     static_assert(std::is_same<decltype(se::get<1>(se::variant<double,int,char>(42))),int&&>::value);
     static_assert(se::get<int>(se::variant<double,int,char>(42))==42);
     static_assert(std::is_same<decltype(se::get<int>(se::variant<double,int,char>(42))),int&&>::value);
+
+    assert(se::get<0>(se::variant<int&>(i))==42);
+    static_assert(std::is_same<decltype(se::get<0>(se::variant<int&>(i))),int&>::value);
+    assert(&se::get<0>(se::variant<int&>(i))==&i);
+    assert(se::get<int&>(se::variant<int&>(i))==42);
+    static_assert(std::is_same<decltype(se::get<int&>(se::variant<int&>(i))),int&>::value);
+    assert(&se::get<int&>(se::variant<int&>(i))==&i);
+    
+    assert(se::get<0>(se::variant<int&&>(std::move(i)))==42);
+    static_assert(std::is_same<decltype(se::get<0>(se::variant<int&&>(std::move(i)))),int&&>::value);
+    int&& ir=se::get<0>(se::variant<int&&>(std::move(i)));
+    assert(&ir==&i);
+    assert(se::get<int&&>(se::variant<int&&>(std::move(i)))==42);
+    static_assert(std::is_same<decltype(se::get<int&&>(se::variant<int&&>(std::move(i)))),int&&>::value);
+    int&& ir2=se::get<int&&>(se::variant<int&&>(std::move(i)));
+    assert(&ir2==&i);
     
     se::variant<int> vi(42);
 
@@ -1201,6 +1219,8 @@ void get_with_rvalues(){
 void get_with_const_rvalues(){
     std::cout<<__FUNCTION__<<std::endl;
 
+    int i=42;
+    
     static_assert(se::get<0>((const se::variant<int>)(42))==42);
     static_assert(std::is_same<decltype(se::get<0>((const se::variant<int>)(42))),const int&&>::value);
     static_assert(se::get<int>((const se::variant<int>)(42))==42);
@@ -1211,6 +1231,21 @@ void get_with_const_rvalues(){
     static_assert(se::get<int>((const se::variant<double,int,char>)(42))==42);
     static_assert(std::is_same<decltype(se::get<int>((const se::variant<double,int,char>)(42))),const int&&>::value);
     
+    assert(se::get<0>((const se::variant<int&>)(i))==42);
+    static_assert(std::is_same<decltype(se::get<0>((const se::variant<int&>)(i))),int&>::value);
+    assert(&se::get<0>((const se::variant<int&>)(i))==&i);
+    assert(se::get<int&>((const se::variant<int&>)(i))==42);
+    static_assert(std::is_same<decltype(se::get<int&>((const se::variant<int&>)(i))),int&>::value);
+    assert(&se::get<int&>((const se::variant<int&>)(i))==&i);
+
+    assert(se::get<0>((const se::variant<int&&>)(std::move(i)))==42);
+    static_assert(std::is_same<decltype(se::get<0>((const se::variant<int&&>)(std::move(i)))),int&&>::value);
+    int&& ir=se::get<0>((const se::variant<int&&>)(std::move(i)));
+    assert(&ir==&i);
+    assert(se::get<int&&>((const se::variant<int&&>)(std::move(i)))==42);
+    static_assert(std::is_same<decltype(se::get<int&&>((const se::variant<int&&>)(std::move(i)))),int&&>::value);
+    int&& ir2=se::get<int&&>((const se::variant<int&&>)(std::move(i)));
+    assert(&ir2==&i);
     
     const se::variant<int> vi(42);
 
