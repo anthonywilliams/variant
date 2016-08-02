@@ -281,7 +281,7 @@ void throwing_copy_assign_leaves_target_unchanged(){
     std::cout<<__FUNCTION__<<std::endl;
     se::variant<std::string,ThrowingCopy> v=std::string("hello");
     assert(v.index()==0);
-    se::variant<std::string,ThrowingCopy> v2{se::in_place<ThrowingCopy>()};
+    se::variant<std::string,ThrowingCopy> v2{se::in_place<ThrowingCopy>};
     try{
         v=v2;
         assert(!"Exception should be thrown");
@@ -370,7 +370,7 @@ void emplace_construction_by_type(){
     std::cout<<__FUNCTION__<<std::endl;
     const char* const msg="hello";
     se::variant<int,char const*,std::string> v(
-        se::in_place<std::string>(),msg);
+        se::in_place<std::string>,msg);
     assert(v.index()==2);
     assert(se::get<2>(v)==msg);
 }
@@ -379,7 +379,7 @@ void emplace_construction_by_index(){
     std::cout<<__FUNCTION__<<std::endl;
     const char* const msg="hello";
     se::variant<int,char const*,std::string> v(
-        se::in_place<2>(),msg);
+        se::in_place<2>,msg);
     assert(v.index()==2);
     assert(se::get<2>(v)==msg);
 }
@@ -611,7 +611,7 @@ void visit(){
 void reference_members(){
     std::cout<<__FUNCTION__<<std::endl;
     int i=42;
-    se::variant<int&> v(se::in_place<0>(),i);
+    se::variant<int&> v(se::in_place<0>,i);
 
     assert(v.index()==0);
     assert(&se::get<int&>(v)==&i);
@@ -668,10 +668,10 @@ void constexpr_variant(){
     constexpr se::variant<int> v(42);
     constexpr int i=se::get<int>(v);
     assert(i==42);
-    constexpr se::variant<int> v2(se::in_place<0>(),42);
+    constexpr se::variant<int> v2(se::in_place<0>,42);
     constexpr int i2=se::get<int>(v2);
     assert(i2==42);
-    constexpr se::variant<int> v3(se::in_place<int>(),42);
+    constexpr se::variant<int> v3(se::in_place<int>,42);
     constexpr int i3=se::get<int>(v3);
     assert(i3==42);
     constexpr se::variant<int,double> v4(4.2);
@@ -771,7 +771,7 @@ void duplicate_types(){
     assert(v.index()==0);
     assert(se::get<0>(v)==42);
 
-    se::variant<int,int> v2(se::in_place<1>(),42);
+    se::variant<int,int> v2(se::in_place<1>,42);
     assert(v2.index()==1);
     assert(se::get<1>(v2)==42);
     // assert(se::get<int>(v2)==42);
@@ -786,7 +786,7 @@ struct NonMovable{
 
 void non_movable_types(){
     std::cout<<__FUNCTION__<<std::endl;
-    se::variant<NonMovable> v{se::in_place<0>()};
+    se::variant<NonMovable> v{se::in_place<0>};
     assert(se::get<0>(v).i==42);
     se::get<0>(v).i=37;
     v.emplace<NonMovable>();
@@ -884,7 +884,7 @@ void json(){
 
 void nothrow_assign_to_variant_holding_type_with_throwing_move_ok(){
     std::cout<<__FUNCTION__<<std::endl;
-    se::variant<ThrowingCopy,int> v{se::in_place<0>()};
+    se::variant<ThrowingCopy,int> v{se::in_place<0>};
     v=42;
     assert(v.index()==1);
     assert(se::get<1>(v)==42);
@@ -892,7 +892,7 @@ void nothrow_assign_to_variant_holding_type_with_throwing_move_ok(){
 
 void maybe_throw_assign_to_variant_holding_type_with_throwing_move_ok(){
     std::cout<<__FUNCTION__<<std::endl;
-    se::variant<ThrowingCopy,std::string> v{se::in_place<0>()};
+    se::variant<ThrowingCopy,std::string> v{se::in_place<0>};
     v="hello";
     assert(v.index()==1);
     assert(se::get<1>(v)=="hello");
@@ -942,7 +942,7 @@ void throwing_emplace_from_nonmovable_type_leaves_variant_empty(){
 void throwing_emplace_when_stored_type_can_throw_leaves_variant_empty(){
     std::cout<<__FUNCTION__<<std::endl;
     se::variant<NonMovableThrower,ThrowingCopy> v{
-        se::in_place<ThrowingCopy>()};
+        se::in_place<ThrowingCopy>};
     se::get<1>(v).data=21;
     try{
         v.emplace<NonMovableThrower>(42);
