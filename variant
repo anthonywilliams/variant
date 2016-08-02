@@ -120,6 +120,22 @@ struct __next_index{
 template<typename ... _Types>
 class variant;
 
+template<typename>
+struct variant_size;
+
+template <typename _Type>
+struct variant_size<const _Type> : variant_size<_Type> {};
+
+template <typename _Type>
+struct variant_size<volatile _Type> : variant_size<_Type> {};
+
+template <typename _Type>
+struct variant_size<const volatile _Type> : variant_size<_Type> {};
+
+template <typename... _Types>
+struct variant_size<variant<_Types...>>
+    : std::integral_constant<size_t, sizeof...(_Types)> {};
+
 template<typename _Type,typename ... _Types>
 constexpr _Type& get(variant<_Types...>&);
 

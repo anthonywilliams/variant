@@ -1084,6 +1084,25 @@ void variant_of_references(){
     static_assert(&se::get<0>(vi3)==&i);
 }
 
+void variant_size(){
+    static_assert(se::variant_size<se::variant<int>>::value==1);
+    static_assert(se::variant_size<se::variant<int,double>>::value==2);
+    static_assert(se::variant_size<se::variant<std::string,int,double>>::value==3);
+    static_assert(se::variant_size<se::variant<int,double,int&,const std::string>>::value==4);
+    static_assert(se::variant_size<const se::variant<int>>::value==1);
+    static_assert(se::variant_size<const se::variant<int,double>>::value==2);
+    static_assert(se::variant_size<const se::variant<std::string,int,double>>::value==3);
+    static_assert(se::variant_size<const se::variant<int,double,int&,const std::string>>::value==4);
+    static_assert(se::variant_size<volatile se::variant<int>>::value==1);
+    static_assert(se::variant_size<volatile se::variant<int,double>>::value==2);
+    static_assert(se::variant_size<volatile se::variant<std::string,int,double>>::value==3);
+    static_assert(se::variant_size<volatile se::variant<int,double,int&,const std::string>>::value==4);
+    static_assert(se::variant_size<volatile const se::variant<int>>::value==1);
+    static_assert(se::variant_size<volatile const se::variant<int,double>>::value==2);
+    static_assert(se::variant_size<volatile const se::variant<std::string,int,double>>::value==3);
+    static_assert(se::variant_size<volatile const se::variant<int,double,int&,const std::string>>::value==4);
+}
+
 int main(){
     initial_is_first_type();
     can_construct_first_type();
@@ -1149,8 +1168,7 @@ int main(){
     large_noexcept_movable_and_small_throw_movable();
     construct_small_with_large_throwables();
     if_emplace_throws_variant_is_valueless();
-
     properties();
-
     variant_of_references();
+    variant_size();
 }
