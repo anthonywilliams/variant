@@ -173,6 +173,9 @@ constexpr _Type const& get(variant<_Types...> const&);
 template<typename _Type,typename ... _Types>
 constexpr _Type&& get(variant<_Types...>&&);
 
+template<typename _Type,typename ... _Types>
+constexpr const _Type&& get(variant<_Types...> const&&);
+
 template<ptrdiff_t _Index,typename ... _Types>
 constexpr typename __indexed_type<_Index,_Types...>::__type& get(variant<_Types...>&);
 
@@ -333,6 +336,9 @@ struct __variant_storage{
     static constexpr const _Type& __get(__type const& __val){
         return __val;
     }
+    static constexpr const _Type&& __get_rref(__type const& __val){
+        return std::move(__val);
+    }
     static void __destroy(__type&){}
 };
 
@@ -403,6 +409,9 @@ struct __variant_storage<_Type,false>{
     static constexpr const _Type& __get(__type const& __val){
         return __val.__get();
     }
+    static constexpr const _Type&& __get_rref(__type const& __val){
+        return std::move(__val.__get());
+    }
     static void __destroy(__type& __val){
         __val.__destroy();
     }
@@ -421,6 +430,9 @@ struct __variant_storage<_Type&,__b>{
     static constexpr _Type& __get(__type const& __val){
         return *__val;
     }
+    static constexpr const _Type& __get_rref(__type const&& __val){
+        return *__val;
+    }
     static void __destroy(__type&){}
 };
 
@@ -435,6 +447,9 @@ struct __variant_storage<_Type&&,__b>{
         return static_cast<_Type&&>(*__val);
     }
     static constexpr _Type&& __get(__type const& __val){
+        return static_cast<_Type&&>(*__val);
+    }
+    static constexpr _Type&& __get_rref(__type const& __val){
         return static_cast<_Type&&>(*__val);
     }
     static void __destroy(__type&){}
@@ -464,6 +479,9 @@ union __variant_data<_Type>{
     }
     constexpr const _Type& __get(emplaced_index_t<0>) const{
         return __variant_storage<_Type>::__get(__val);
+    }
+    constexpr const _Type&& __get_rref(emplaced_index_t<0>) const{
+        return __variant_storage<_Type>::__get_rref(__val);
     }
     void __destroy(emplaced_index_t<0>){
         __variant_storage<_Type>::__destroy(__val);
@@ -537,7 +555,7 @@ union __variant_data<_Head,_Rest...>{
         return __head.__get(emplaced_index_t<0>());
     }
 
-    _Head&& __get_rref(emplaced_index_t<0>){
+    constexpr _Head&& __get_rref(emplaced_index_t<0>){
         return __head.__get_rref(emplaced_index_t<0>());
     }
     
@@ -545,6 +563,10 @@ union __variant_data<_Head,_Rest...>{
         return __head.__get(emplaced_index_t<0>());
     }
 
+    constexpr const _Head&& __get_rref(emplaced_index_t<0>) const{
+        return __head.__get_rref(emplaced_index_t<0>());
+    }
+    
     template<ptrdiff_t _Index>
     typename __indexed_type<_Index-1,_Rest...>::__type& __get(
         emplaced_index_t<_Index>){
@@ -552,7 +574,7 @@ union __variant_data<_Head,_Rest...>{
     }
 
     template<ptrdiff_t _Index>
-    typename __indexed_type<_Index-1,_Rest...>::__type&& __get_rref(
+    constexpr typename __indexed_type<_Index-1,_Rest...>::__type&& __get_rref(
         emplaced_index_t<_Index>){
         return __rest.__get_rref(emplaced_index_t<_Index-1>());
     }
@@ -563,6 +585,13 @@ union __variant_data<_Head,_Rest...>{
         return __rest.__get(emplaced_index_t<_Index-1>());
     }
 
+    template<ptrdiff_t _Index>
+    constexpr const typename __indexed_type<_Index-1,_Rest...>::__type&& __get_rref(
+        emplaced_index_t<_Index>) const{
+        return __rest.__get_rref(emplaced_index_t<_Index-1>());
+    }
+    
+    
     void __destroy(emplaced_index_t<0>){
         __head.__destroy(emplaced_index_t<0>());
     }
@@ -1492,6 +1521,9 @@ struct __variant_accessor{
     static constexpr __type&& get(variant<_Types...>&& __v){
         return __v.__storage.__get_rref(emplaced_index_t<_Index>());
     }
+    static constexpr const __type&& get(variant<_Types...> const&& __v){
+        return __v.__storage.__get_rref(emplaced_index_t<_Index>());
+    }
 };
 
 template<typename _Indices,typename _Type,typename _Variant>
@@ -1506,6 +1538,9 @@ struct __get_by_type_helper<__index_sequence<>,_Type,_Variant>{
         throw bad_variant_access("Bad variant type in get");
     }
     static _Type&& __get(_Variant&& __v){
+        throw bad_variant_access("Bad variant type in get");
+    }
+    static const _Type&& __get(_Variant const&& __v){
         throw bad_variant_access("Bad variant type in get");
     }
 };
@@ -1532,6 +1567,12 @@ struct __get_by_type_helper<
             __get_by_type_helper<
                 __index_sequence<_OtherIndices...>,_Type,_Variant>::__get(std::move(__v));
     }
+    static constexpr const _Type&& __get(_Variant const&& __v){
+        return (__v.index()==_FirstIndex)?
+            get<_FirstIndex>(std::move(__v)):
+            __get_by_type_helper<
+                __index_sequence<_OtherIndices...>,_Type,_Variant>::__get(std::move(__v));
+    }
 };
 
 template<typename _Type,typename ... _Types>
@@ -1552,6 +1593,13 @@ constexpr _Type const& get(variant<_Types...> const& __v){
     return __get_by_type_helper<__all_matches,_Type,variant<_Types...>>::__get(__v);
 }
 
+template<typename _Type,typename ... _Types>
+constexpr const _Type&& get(variant<_Types...> const&& __v){
+    typedef typename __all_indices<_Type,_Types...>::__type __all_matches;
+    return __get_by_type_helper<__all_matches,_Type,variant<_Types...>>::__get(std::move(__v));
+}
+
+
 template<ptrdiff_t _Index,typename ... _Types>
 constexpr typename __indexed_type<_Index,_Types...>::__type const& get(
     variant<_Types...> const& __v){
@@ -1567,6 +1615,12 @@ constexpr typename __indexed_type<_Index,_Types...>::__type& get(variant<_Types.
 
 template<ptrdiff_t _Index,typename ... _Types>
 constexpr typename __indexed_type<_Index,_Types...>::__type&& get(variant<_Types...>&& __v){
+    return __variant_accessor<_Index,_Types...>::get(
+        (((_Index!=__v.index())?throw bad_variant_access("Bad variant index in get"):0),std::move(__v)));
+}
+
+template<ptrdiff_t _Index,typename ... _Types>
+constexpr const typename __indexed_type<_Index,_Types...>::__type&& get(variant<_Types...> const&& __v){
     return __variant_accessor<_Index,_Types...>::get(
         (((_Index!=__v.index())?throw bad_variant_access("Bad variant index in get"):0),std::move(__v)));
 }

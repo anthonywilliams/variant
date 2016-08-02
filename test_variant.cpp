@@ -1177,6 +1177,11 @@ void get_with_rvalues(){
     static_assert(se::get<int>(se::variant<int>(42))==42);
     static_assert(std::is_same<decltype(se::get<int>(se::variant<int>(42))),int&&>::value);
 
+    static_assert(se::get<1>(se::variant<double,int,char>(42))==42);
+    static_assert(std::is_same<decltype(se::get<1>(se::variant<double,int,char>(42))),int&&>::value);
+    static_assert(se::get<int>(se::variant<double,int,char>(42))==42);
+    static_assert(std::is_same<decltype(se::get<int>(se::variant<double,int,char>(42))),int&&>::value);
+    
     se::variant<int> vi(42);
 
     int&& ri=se::get<0>(std::move(vi));
@@ -1188,6 +1193,36 @@ void get_with_rvalues(){
 
     std::string&& rs=se::get<1>(std::move(v2));
     std::string&& rs2=se::get<std::string>(std::move(v2));
+    assert(&rs==&rs2);
+    assert(&rs==&se::get<1>(v2));
+    assert(rs=="hello");
+}
+
+void get_with_const_rvalues(){
+    std::cout<<__FUNCTION__<<std::endl;
+
+    static_assert(se::get<0>((const se::variant<int>)(42))==42);
+    static_assert(std::is_same<decltype(se::get<0>((const se::variant<int>)(42))),const int&&>::value);
+    static_assert(se::get<int>((const se::variant<int>)(42))==42);
+    static_assert(std::is_same<decltype(se::get<int>((const se::variant<int>)(42))),const int&&>::value);
+
+    static_assert(se::get<1>((const se::variant<double,int,char>)(42))==42);
+    static_assert(std::is_same<decltype(se::get<1>((const se::variant<double,int,char>)(42))),const int&&>::value);
+    static_assert(se::get<int>((const se::variant<double,int,char>)(42))==42);
+    static_assert(std::is_same<decltype(se::get<int>((const se::variant<double,int,char>)(42))),const int&&>::value);
+    
+    
+    const se::variant<int> vi(42);
+
+    const int&& ri=se::get<0>(std::move(vi));
+    const int&& ri2=se::get<int>(std::move(vi));
+    assert(&ri==&ri2);
+    assert(&ri==&se::get<0>(vi));
+
+    const se::variant<int,std::string> v2("hello");
+
+    const std::string&& rs=se::get<1>(std::move(v2));
+    const std::string&& rs2=se::get<std::string>(std::move(v2));
     assert(&rs==&rs2);
     assert(&rs==&se::get<1>(v2));
     assert(rs=="hello");
@@ -1265,4 +1300,5 @@ int main(){
     npos();
     holds_alternative();
     get_with_rvalues();
+    get_with_const_rvalues();
 }
