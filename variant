@@ -2004,7 +2004,29 @@ constexpr inline bool operator<=(monostate const&,monostate const&){ return true
 constexpr inline bool operator>(monostate const&,monostate const&){ return false;}
 constexpr inline bool operator<(monostate const&,monostate const&){ return false;}
 
+struct __hash_visitor{
+    template<typename _Type>
+    size_t operator()(_Type const& __x){
+        return std::hash<_Type>()(__x);
+    }
+};
+
 }
+
+template<>
+struct hash<experimental::monostate>{
+    size_t operator()(experimental::monostate) noexcept{
+        return 42;
+    }
+};
+
+template<typename ... _Types>
+struct hash<experimental::variant<_Types...>>{
+    size_t operator()(experimental::variant<_Types...> const &v) noexcept {
+        return std::hash<ptrdiff_t>()(v.index()) ^
+               experimental::visit(experimental::__hash_visitor(), v);
+    }
+};
 }
 
 #ifdef _MSC_VER

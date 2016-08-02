@@ -1377,6 +1377,24 @@ void monostate(){
     static_assert(!(m1>m2));
 }
 
+void hash(){
+    std::cout<<__FUNCTION__<<std::endl;
+
+    se::variant<int,std::string> vi(42);
+    se::variant<int,std::string> vi2(vi);
+    
+    std::hash<se::variant<int,std::string>> h;
+    static_assert(noexcept(h(vi)));
+    static_assert(std::is_same<decltype(h(vi)),size_t>::value);
+
+    assert(h(vi)==h(vi2));
+
+    se::monostate m{};
+    std::hash<se::monostate> hm;
+    static_assert(noexcept(hm(m)));
+    static_assert(std::is_same<decltype(hm(m)),size_t>::value);
+}
+
 int main(){
     initial_is_first_type();
     can_construct_first_type();
@@ -1455,4 +1473,5 @@ int main(){
     constexpr_visit();
     variant_with_no_types();
     monostate();
+    hash();
 }
