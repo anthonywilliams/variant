@@ -1689,7 +1689,9 @@ public:
                 __swap_op_table<variant>::__apply[index()](*this,__other);
         }
         else{
-            std::swap(*this,__other);
+            variant __temp(std::move(__other));
+            __other.__index=__other.__move_construct(*this);
+            __index=__move_construct(__temp);
         }
     }
 };

@@ -548,10 +548,21 @@ void swap_different_types(){
 
     assert(v.index()==0);
     assert(v2.index()==1);
+    assert(se::get<int>(v)==42);
     assert(se::get<CopyCounter>(v2).copy_construct==0);
-    assert(se::get<CopyCounter>(v2).move_construct==3);
+    std::cout<<"move count="<<se::get<CopyCounter>(v2).move_construct<<std::endl;
+    assert(se::get<CopyCounter>(v2).move_construct<=3);
+    assert(se::get<CopyCounter>(v2).move_construct>1);
     assert(se::get<CopyCounter>(v2).copy_assign==0);
     assert(se::get<CopyCounter>(v2).move_assign==0);
+    v.swap(v2);
+    assert(v2.index()==0);
+    assert(v.index()==1);
+    assert(se::get<int>(v2)==42);
+    assert(se::get<CopyCounter>(v).copy_construct==0);
+    assert(se::get<CopyCounter>(v).move_construct==4);
+    assert(se::get<CopyCounter>(v).copy_assign==0);
+    assert(se::get<CopyCounter>(v).move_assign==0);
 }
 
 void assign_empty_to_empty(){
