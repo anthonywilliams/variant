@@ -136,6 +136,32 @@ template <typename... _Types>
 struct variant_size<variant<_Types...>>
     : std::integral_constant<size_t, sizeof...(_Types)> {};
 
+template<size_t _Index,typename _Type>
+struct variant_alternative;
+
+template<size_t _Index,typename _Type>
+using variant_alternative_t=typename variant_alternative<_Index,_Type>::type;
+
+template <size_t _Index, typename _Type>
+struct variant_alternative<_Index, const _Type>{
+    using type=std::add_const_t<variant_alternative_t<_Index,_Type>>;
+};
+
+template <size_t _Index, typename _Type>
+struct variant_alternative<_Index, volatile _Type>{
+    using type=std::add_volatile_t<variant_alternative_t<_Index,_Type>>;
+};
+
+template <size_t _Index, typename _Type>
+struct variant_alternative<_Index, volatile const _Type>{
+    using type=std::add_volatile_t<std::add_const_t<variant_alternative_t<_Index,_Type>>>;
+};
+
+template<size_t _Index,typename ... _Types>
+struct variant_alternative<_Index,variant<_Types...>>{
+    using type=typename __indexed_type<_Index,_Types...>::__type;
+};
+
 template<typename _Type,typename ... _Types>
 constexpr _Type& get(variant<_Types...>&);
 

@@ -1103,6 +1103,40 @@ void variant_size(){
     static_assert(se::variant_size<volatile const se::variant<int,double,int&,const std::string>>::value==4);
 }
 
+void variant_alternative(){
+    static_assert(std::is_same<se::variant_alternative<0,se::variant<int>>::type,int>::value);
+    static_assert(std::is_same<se::variant_alternative<0,se::variant<int,std::string>>::type,int>::value);
+    static_assert(std::is_same<se::variant_alternative<1,se::variant<int,std::string>>::type,std::string>::value);
+    static_assert(std::is_same<se::variant_alternative<0,se::variant<const int>>::type,const int>::value);
+    static_assert(std::is_same<se::variant_alternative<0,se::variant<int&,std::string>>::type,int&>::value);
+    static_assert(std::is_same<se::variant_alternative<2,se::variant<int,std::string,const double&>>::type,const double&>::value);
+    static_assert(std::is_same<se::variant_alternative_t<0,se::variant<int,std::string,const double&>>,int>::value);
+    
+    static_assert(std::is_same<se::variant_alternative<0,const se::variant<int>>::type,const int>::value);
+    static_assert(std::is_same<se::variant_alternative<0,const se::variant<int,std::string>>::type,const int>::value);
+    static_assert(std::is_same<se::variant_alternative<1,const se::variant<int,std::string>>::type,const std::string>::value);
+    static_assert(std::is_same<se::variant_alternative<0,const se::variant<const int>>::type,const int>::value);
+    static_assert(std::is_same<se::variant_alternative<0,const se::variant<int&,std::string>>::type,int&>::value);
+    static_assert(std::is_same<se::variant_alternative<2,const se::variant<int,std::string,const double&>>::type,const double&>::value);
+    static_assert(std::is_same<se::variant_alternative_t<0,const se::variant<int,std::string,const double&>>,const int>::value);
+
+    static_assert(std::is_same<se::variant_alternative<0,volatile const se::variant<int>>::type,volatile const int>::value);
+    static_assert(std::is_same<se::variant_alternative<0,volatile const se::variant<int,std::string>>::type,volatile const int>::value);
+    static_assert(std::is_same<se::variant_alternative<1,volatile const se::variant<int,std::string>>::type,volatile const std::string>::value);
+    static_assert(std::is_same<se::variant_alternative<0,volatile const se::variant<const int>>::type,volatile const int>::value);
+    static_assert(std::is_same<se::variant_alternative<0,volatile const se::variant<int&,std::string>>::type,int&>::value);
+    static_assert(std::is_same<se::variant_alternative<2,volatile const se::variant<int,std::string,const double&>>::type,const double&>::value);
+    static_assert(std::is_same<se::variant_alternative_t<0,volatile const se::variant<int,std::string,const double&>>,volatile const int>::value);
+
+    static_assert(std::is_same<se::variant_alternative<0,volatile se::variant<int>>::type,volatile int>::value);
+    static_assert(std::is_same<se::variant_alternative<0,volatile se::variant<int,std::string>>::type,volatile int>::value);
+    static_assert(std::is_same<se::variant_alternative<1,volatile se::variant<int,std::string>>::type,volatile std::string>::value);
+    static_assert(std::is_same<se::variant_alternative<0,volatile se::variant<const int>>::type,volatile const int>::value);
+    static_assert(std::is_same<se::variant_alternative<0,volatile se::variant<int&,std::string>>::type,int&>::value);
+    static_assert(std::is_same<se::variant_alternative<2,volatile se::variant<int,std::string,const double&>>::type,const double&>::value);
+    static_assert(std::is_same<se::variant_alternative_t<0,volatile se::variant<int,std::string,const double&>>,volatile int>::value);
+}
+
 int main(){
     initial_is_first_type();
     can_construct_first_type();
@@ -1171,4 +1205,5 @@ int main(){
     properties();
     variant_of_references();
     variant_size();
+    variant_alternative();
 }
