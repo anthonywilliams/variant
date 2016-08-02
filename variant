@@ -1230,6 +1230,33 @@ template<>
 struct __all_move_constructible<>:
     std::true_type{};
 
+template<typename ... _Types>
+struct __all_move_assignable;
+
+template<typename _Head,typename ... _Rest>
+struct __all_move_assignable<_Head,_Rest...>
+{
+    static constexpr bool value=std::is_move_assignable<_Head>::value && __all_move_assignable<_Rest...>::value;
+};
+
+template<>
+struct __all_move_assignable<>:
+    std::true_type{};
+
+template<typename ... _Types>
+struct __all_copy_assignable;
+
+template<typename _Head,typename ... _Rest>
+struct __all_copy_assignable<_Head,_Rest...>
+{
+    static constexpr bool value=std::is_copy_assignable<_Head>::value && __all_copy_assignable<_Rest...>::value;
+};
+
+template<>
+struct __all_copy_assignable<>:
+    std::true_type{};
+
+
 template<bool _MoveConstructible,typename ... _Types>
 struct __noexcept_variant_move_construct_impl{};
 
@@ -1475,7 +1502,44 @@ public:
         return *this;
     }
 
-    variant& operator=(variant const& __other){
+    variant &operator=(
+        typename std::conditional<
+            !(__all_copy_constructible<_Types...>::value &&
+              __all_move_constructible<_Types...>::value &&
+              __all_copy_assignable<_Types...>::value),
+            variant, __private_type>::type const &__other) = delete;
+
+    variant &operator=(
+        typename std::conditional<
+            __all_copy_constructible<_Types...>::value &&
+                __all_move_constructible<_Types...>::value &&
+                __all_copy_assignable<_Types...>::value,
+            variant, __private_type>::type const &__other) {
+        if (__other.valueless_by_exception()) {
+            __destroy_self();
+        }
+        else if(__other.index()==index()){
+            __copy_assign_op_table<variant>::__apply[index()](this,__other);
+        }
+        else{
+            __replace_construct_helper::__op_table<variant>::__copy_assign[
+                __other.index()](this,__other);
+        }
+        return *this;
+    }
+    variant &operator=(
+        typename std::conditional<
+            !(__all_copy_constructible<_Types...>::value &&
+              __all_move_constructible<_Types...>::value &&
+              __all_copy_assignable<_Types...>::value),
+            variant, __private_type>::type &__other) = delete;
+
+    variant &operator=(
+        typename std::conditional<
+            __all_copy_constructible<_Types...>::value &&
+                __all_move_constructible<_Types...>::value &&
+                __all_copy_assignable<_Types...>::value,
+            variant, __private_type>::type &__other) {
         if(__other.valueless_by_exception()){
             __destroy_self();
         }
@@ -1488,21 +1552,17 @@ public:
         }
         return *this;
     }
-    variant& operator=(variant& __other){
-        if(__other.valueless_by_exception()){
-            __destroy_self();
-        }
-        else if(__other.index()==index()){
-            __copy_assign_op_table<variant>::__apply[index()](this,__other);
-        }
-        else{
-            __replace_construct_helper::__op_table<variant>::__copy_assign[
-                __other.index()](this,__other);
-        }
-        return *this;
-    }
-    variant& operator=(variant&& __other){
-        if(__other.valueless_by_exception()){
+    variant &operator=(
+        typename std::conditional<
+            !(__all_move_constructible<_Types...>::value &&
+              __all_move_assignable<_Types...>::value),
+            variant, __private_type>::type &&__other) = delete;
+
+    variant &operator=(
+        typename std::conditional<__all_move_constructible<_Types...>::value &&
+                                      __all_move_assignable<_Types...>::value,
+                                  variant, __private_type>::type &&__other) {
+        if (__other.valueless_by_exception()) {
             __destroy_self();
         }
         else if(__other.index()==index()){

@@ -1067,12 +1067,16 @@ void if_emplace_throws_variant_is_valueless(){
 
 void properties(){
     std::cout<<__FUNCTION__<<std::endl;
-    // std::cout<<!std::is_default_constructible<se::variant<>>::value<<std::endl;
-    // std::cout<< std::is_copy_constructible<se::variant<>>::value<<std::endl;  // or should this be false?
+    static_assert(!std::is_default_constructible<se::variant<>>::value);
+    static_assert(std::is_copy_constructible<se::variant<>>::value);  // or should this be false?
     static_assert(std::is_copy_constructible<se::variant<int>>::value);
     static_assert(!std::is_copy_constructible<se::variant<std::mutex,int>>::value);
     static_assert(!std::is_move_constructible<se::variant<std::mutex,int>>::value);
     static_assert( std::is_nothrow_move_constructible<se::variant<std::string>>::value);
+    static_assert(!std::is_move_assignable<se::variant<std::mutex,int>>::value);
+    static_assert(!std::is_copy_assignable<se::variant<std::mutex,int>>::value);
+    static_assert(std::is_move_assignable<se::variant<std::string,int>>::value);
+    static_assert(std::is_copy_assignable<se::variant<std::string,int>>::value);
 }
 
 void variant_of_references(){
