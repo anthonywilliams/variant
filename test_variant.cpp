@@ -767,14 +767,14 @@ std::cout<<"variant<char,std::pair<double,char>>:"<<sizeof(se::variant<char,std:
 void duplicate_types(){
     std::cout<<__FUNCTION__<<std::endl;
     se::variant<int,int> v(42);
-    assert(se::get<int>(v)==42);
+    // assert(se::get<int>(v)==42);
     assert(v.index()==0);
     assert(se::get<0>(v)==42);
 
     se::variant<int,int> v2(se::emplaced_index_t<1>(),42);
     assert(v2.index()==1);
     assert(se::get<1>(v2)==42);
-    assert(se::get<int>(v2)==42);
+    // assert(se::get<int>(v2)==42);
 }
 struct NonMovable{
     int i;
@@ -1263,6 +1263,28 @@ void get_with_const_rvalues(){
     assert(rs=="hello");
 }
 
+void get_if(){
+    constexpr se::variant<int> cvi(42);
+    constexpr se::variant<double,int,char> cvidc(42);
+    constexpr se::variant<double,int,char> cvidc2(4.2);
+
+    static_assert(se::get_if<0>(cvi)==&se::get<0>(cvi));
+    static_assert(se::get_if<int>(cvi)==&se::get<0>(cvi));
+    
+    static_assert(!se::get_if<0>(cvidc));
+    static_assert(se::get_if<1>(cvidc)==&se::get<1>(cvidc));
+    static_assert(!se::get_if<2>(cvidc));
+    static_assert(!se::get_if<double>(cvidc));
+    static_assert(se::get_if<int>(cvidc)==&se::get<1>(cvidc));
+    static_assert(!se::get_if<char>(cvidc));
+
+    static_assert(se::get_if<double>(cvidc2)==&se::get<0>(cvidc2));
+    static_assert(!se::get_if<int>(cvidc2));
+    static_assert(!se::get_if<char>(cvidc2));
+
+    
+}
+
 int main(){
     initial_is_first_type();
     can_construct_first_type();
@@ -1336,4 +1358,5 @@ int main(){
     holds_alternative();
     get_with_rvalues();
     get_with_const_rvalues();
+    get_if();
 }
