@@ -1474,6 +1474,18 @@ struct allocatable{
     
 };
 
+struct allocatable_no_arg{
+
+    bool allocator_supplied;
+
+    allocatable_no_arg():
+        allocator_supplied(false){}
+    template<typename Alloc>
+    allocatable_no_arg(Alloc const&):
+        allocator_supplied(true){}
+    
+};
+
 struct not_allocatable{
 
     bool allocator_supplied;
@@ -1490,9 +1502,13 @@ namespace std{
 template<typename Alloc>
 struct uses_allocator<allocatable,Alloc>:
         true_type{};
+
+template<typename Alloc>
+struct uses_allocator<allocatable_no_arg,Alloc>:
+        true_type{};
 }
 
-void allocator_default_constructor(){
+void allocator_default_constructor_no_allocator_support(){
     std::cout<<__FUNCTION__<<std::endl;
 
     struct MyClass{
@@ -1507,19 +1523,33 @@ void allocator_default_constructor(){
     assert(vi.index()==0);
     assert(se::get<0>(vi).i==42);
 
-    se::variant<allocatable,std::string> v2{std::allocator_arg_t(),CountingAllocator<MyClass>()};
-
-    assert(allocate_count==0);
-    assert(v2.index()==0);
-    assert(se::get<0>(v2).allocator_supplied);
-
-    se::variant<not_allocatable,std::string> v3{std::allocator_arg_t(),CountingAllocator<MyClass>()};
+    se::variant<not_allocatable,std::string> v3{std::allocator_arg_t(),CountingAllocator<int>()};
 
     assert(allocate_count==0);
     assert(v3.index()==0);
     assert(!se::get<0>(v3).allocator_supplied);
-    
 }
+
+void allocator_default_constructor_allocator_arg_support(){
+    std::cout<<__FUNCTION__<<std::endl;
+
+    se::variant<allocatable,std::string> v2{std::allocator_arg_t(),CountingAllocator<int>()};
+
+    assert(allocate_count==0);
+    assert(v2.index()==0);
+    assert(se::get<0>(v2).allocator_supplied);
+}
+
+void allocator_default_constructor_no_allocator_arg_support(){
+    std::cout<<__FUNCTION__<<std::endl;
+
+    se::variant<allocatable_no_arg,std::string> v2{std::allocator_arg_t(),CountingAllocator<int>()};
+
+    assert(allocate_count==0);
+    assert(v2.index()==0);
+    assert(se::get<0>(v2).allocator_supplied);
+}
+    
 
 int main(){
     initial_is_first_type();
@@ -1600,5 +1630,7 @@ int main(){
     variant_with_no_types();
     monostate();
     hash();
-    allocator_default_constructor();
+    allocator_default_constructor_no_allocator_support();
+    allocator_default_constructor_allocator_arg_support();
+    allocator_default_constructor_no_allocator_arg_support();
 }

@@ -520,7 +520,17 @@ union __variant_data<_Type>{
             std::allocator_arg_t,_Alloc const&,
             _Args&& ... __args):
         __val(std::forward<_Args>(__args)...){}
-    
+
+    template <typename _Alloc, typename... _Args>
+    __variant_data(
+        typename std::conditional<
+            std::uses_allocator<_Type, _Alloc>::value &&
+                !std::is_constructible<_Type, std::allocator_arg_t,
+                                       _Alloc const &, _Args...>::value,
+            in_place_index_t<0>, __dummy_type>::type,
+        std::allocator_arg_t, _Alloc const &__alloc, _Args &&... __args)
+        : __val(std::forward<_Args>(__args)..., __alloc) {}
+
     _Type& __get(in_place_index_t<0>){
         return __variant_storage<_Type>::__get(__val);
     }
