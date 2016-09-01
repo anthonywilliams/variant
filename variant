@@ -1534,12 +1534,6 @@ public:
         __index(0)
     {}
 
-    template<typename _Alloc>
-    variant(std::allocator_arg_t ,_Alloc const& __alloc):
-        __storage(in_place<0>,std::allocator_arg_t(),__alloc),
-        __index(0)
-    {}
-    
     constexpr variant(typename std::conditional<__all_move_constructible<_Types...>::value,variant,__private_type>::type&& __other)
     noexcept(__noexcept_variant_move_construct<_Types...>::value):
         __index(__move_construct(__other))
@@ -1600,6 +1594,52 @@ public:
             __x),
         __index(__type_index_to_construct<std::initializer_list<_Type>,_Types...>::__value)
     {}
+
+    template<typename _Alloc>
+    variant(std::allocator_arg_t ,_Alloc const& __alloc):
+        __storage(in_place<0>,std::allocator_arg_t(),__alloc),
+        __index(0)
+    {}
+    
+    template<typename _Alloc,size_t _Index,typename ... _Args>
+    explicit variant(
+        std::allocator_arg_t ,_Alloc const& __alloc,
+        in_place_index_t<_Index>,_Args&& ... __args):
+        __storage(in_place<_Index>,std::allocator_arg_t(),__alloc,
+                  std::forward<_Args>(__args)...),
+        __index(_Index)
+    {
+        using __constructed_type=typename __indexed_type<_Index,_Types...>::__type;
+        static_assert(
+            (std::uses_allocator<__constructed_type,_Alloc>::value &&
+             (std::is_constructible<__constructed_type,std::allocator_arg_t,_Alloc,_Args...>::value ||
+              std::is_constructible<__constructed_type,_Args...,_Alloc>::value)) ||
+            (!std::uses_allocator<__constructed_type,_Alloc>::value &&
+             std::is_constructible<__constructed_type,_Args...>::value),
+            "Type must be uses-allocator constructible from args or not use allocator");
+    }
+
+    template<typename _Alloc,typename _Type,typename ... _Args>
+    explicit variant(
+        std::allocator_arg_t ,_Alloc const& __alloc,
+        in_place_type_t<_Type>,_Args&& ... __args):
+        __storage(
+            in_place<__type_index<_Type,_Types...>::__value>,
+            std::allocator_arg_t(),__alloc,
+            std::forward<_Args>(__args)...),
+        __index(__type_index<_Type,_Types...>::__value)
+    {
+        using __constructed_type=_Type;
+        static_assert(
+            (std::uses_allocator<__constructed_type,_Alloc>::value &&
+             (std::is_constructible<__constructed_type,std::allocator_arg_t,_Alloc,_Args...>::value ||
+              std::is_constructible<__constructed_type,_Args...,_Alloc>::value)) ||
+            (!std::uses_allocator<__constructed_type,_Alloc>::value &&
+             std::is_constructible<__constructed_type,_Args...>::value),
+            "Type must be uses-allocator constructible from args or not use allocator");
+        static_assert(std::is_constructible<_Type,_Args...>::value,"Type must be constructible from args");
+    }
+
     
     template<typename _Type>
     variant& operator=(_Type&& __x){
@@ -2060,6 +2100,10 @@ struct hash<experimental::variant<_Types...>>{
                experimental::visit(experimental::__hash_visitor(), v);
     }
 };
+
+template<typename ... _Args,typename _Alloc>
+struct uses_allocator<experimental::variant<_Args...>,_Alloc>:
+    true_type{};
 }
 
 #ifdef _MSC_VER

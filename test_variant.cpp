@@ -1549,7 +1549,157 @@ void allocator_default_constructor_no_allocator_arg_support(){
     assert(v2.index()==0);
     assert(se::get<0>(v2).allocator_supplied);
 }
+
+void variant_uses_allocator(){
+    std::cout<<__FUNCTION__<<std::endl;
+
+    static_assert(
+        std::uses_allocator<se::variant<int,std::string>,CountingAllocator<double>>::value,
+        "Variant should use allocator");
+}
     
+void allocator_index_constructor_no_allocator_support(){
+    std::cout<<__FUNCTION__<<std::endl;
+
+    struct MyClass{
+        int i;
+        MyClass():
+            i(42){}
+    };
+
+    se::variant<MyClass,std::string> vi{std::allocator_arg_t(),CountingAllocator<MyClass>(),se::in_place<0>};
+
+    assert(allocate_count==0);
+    assert(vi.index()==0);
+    assert(se::get<0>(vi).i==42);
+
+    se::variant<std::string,MyClass> vi2{std::allocator_arg_t(),CountingAllocator<MyClass>(),se::in_place<1>};
+
+    assert(allocate_count==0);
+    assert(vi2.index()==1);
+    assert(se::get<1>(vi2).i==42);
+
+
+    se::variant<not_allocatable,std::string> v1{std::allocator_arg_t(),CountingAllocator<int>(),se::in_place<0>};
+
+    assert(allocate_count==0);
+    assert(v1.index()==0);
+    assert(!se::get<0>(v1).allocator_supplied);
+
+    se::variant<std::string,not_allocatable> v2{std::allocator_arg_t(),CountingAllocator<int>(),se::in_place<1>};
+
+    assert(allocate_count==0);
+    assert(v2.index()==1);
+    assert(!se::get<1>(v2).allocator_supplied);
+}
+
+void allocator_index_constructor_allocator_arg_support(){
+    std::cout<<__FUNCTION__<<std::endl;
+
+    se::variant<allocatable,std::string> v1{
+        std::allocator_arg_t(),CountingAllocator<int>(),se::in_place<0>};
+
+    assert(allocate_count==0);
+    assert(v1.index()==0);
+    assert(se::get<0>(v1).allocator_supplied);
+
+    se::variant<std::string,allocatable> v2{
+        std::allocator_arg_t(),CountingAllocator<int>(),se::in_place<1>};
+
+    assert(allocate_count==0);
+    assert(v2.index()==1);
+    assert(se::get<1>(v2).allocator_supplied);
+}
+
+void allocator_index_constructor_no_allocator_arg_support(){
+    std::cout<<__FUNCTION__<<std::endl;
+
+    se::variant<allocatable_no_arg,std::string> v1{
+        std::allocator_arg_t(),CountingAllocator<int>(),se::in_place<0>};
+
+    assert(allocate_count==0);
+    assert(v1.index()==0);
+    assert(se::get<0>(v1).allocator_supplied);
+
+    se::variant<std::string,allocatable_no_arg> v2{
+        std::allocator_arg_t(),CountingAllocator<int>(),se::in_place<1>};
+
+    assert(allocate_count==0);
+    assert(v2.index()==1);
+    assert(se::get<1>(v2).allocator_supplied);
+}
+
+void allocator_type_constructor_no_allocator_support(){
+    std::cout<<__FUNCTION__<<std::endl;
+
+    struct MyClass{
+        int i;
+        MyClass():
+            i(42){}
+    };
+
+    se::variant<MyClass,std::string> vi{std::allocator_arg_t(),CountingAllocator<MyClass>(),se::in_place<MyClass>};
+
+    assert(allocate_count==0);
+    assert(vi.index()==0);
+    assert(se::get<0>(vi).i==42);
+
+    se::variant<std::string,MyClass> vi2{std::allocator_arg_t(),CountingAllocator<MyClass>(),se::in_place<MyClass>};
+
+    assert(allocate_count==0);
+    assert(vi2.index()==1);
+    assert(se::get<1>(vi2).i==42);
+
+
+    se::variant<not_allocatable,std::string> v1{std::allocator_arg_t(),CountingAllocator<int>(),se::in_place<not_allocatable>};
+
+    assert(allocate_count==0);
+    assert(v1.index()==0);
+    assert(!se::get<0>(v1).allocator_supplied);
+
+    se::variant<std::string,not_allocatable> v2{std::allocator_arg_t(),CountingAllocator<int>(),se::in_place<not_allocatable>};
+
+    assert(allocate_count==0);
+    assert(v2.index()==1);
+    assert(!se::get<1>(v2).allocator_supplied);
+}
+
+void allocator_type_constructor_allocator_arg_support(){
+    std::cout<<__FUNCTION__<<std::endl;
+
+    se::variant<allocatable,std::string> v1{
+        std::allocator_arg_t(),CountingAllocator<int>(),se::in_place<allocatable>};
+
+    assert(allocate_count==0);
+    assert(v1.index()==0);
+    assert(se::get<0>(v1).allocator_supplied);
+
+    se::variant<std::string,allocatable> v2{
+        std::allocator_arg_t(),CountingAllocator<int>(),se::in_place<allocatable>};
+
+    assert(allocate_count==0);
+    assert(v2.index()==1);
+    assert(se::get<1>(v2).allocator_supplied);
+}
+
+void allocator_type_constructor_no_allocator_arg_support(){
+    std::cout<<__FUNCTION__<<std::endl;
+
+    se::variant<allocatable_no_arg,std::string> v1{
+        std::allocator_arg_t(),CountingAllocator<int>(),se::in_place<allocatable_no_arg>};
+
+    assert(allocate_count==0);
+    assert(v1.index()==0);
+    assert(se::get<0>(v1).allocator_supplied);
+
+    se::variant<std::string,allocatable_no_arg> v2{
+        std::allocator_arg_t(),CountingAllocator<int>(),se::in_place<allocatable_no_arg>};
+
+    assert(allocate_count==0);
+    assert(v2.index()==1);
+    assert(se::get<1>(v2).allocator_supplied);
+}
+
 
 int main(){
     initial_is_first_type();
@@ -1633,4 +1783,11 @@ int main(){
     allocator_default_constructor_no_allocator_support();
     allocator_default_constructor_allocator_arg_support();
     allocator_default_constructor_no_allocator_arg_support();
+    variant_uses_allocator();
+    allocator_index_constructor_no_allocator_support();
+    allocator_index_constructor_allocator_arg_support();
+    allocator_index_constructor_no_allocator_arg_support();
+    allocator_type_constructor_no_allocator_support();
+    allocator_type_constructor_allocator_arg_support();
+    allocator_type_constructor_no_allocator_arg_support();
 }
