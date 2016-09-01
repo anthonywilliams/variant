@@ -42,6 +42,7 @@
 #include <new>
 #include <utility>
 #include <limits.h>
+#include <memory>
 
 #ifdef _MSC_VER
 #pragma warning(push)
@@ -510,6 +511,16 @@ union __variant_data<_Type>{
     constexpr __variant_data(in_place_index_t<0>,_Args&& ... __args):
         __val(std::forward<_Args>(__args)...){}
 
+    template<typename _Alloc,typename ... _Args>
+        constexpr __variant_data(
+            typename std::conditional<
+            !std::uses_allocator<_Type,_Alloc>::value,
+            in_place_index_t<0>,
+            __dummy_type>::type,
+            std::allocator_arg_t,_Alloc const&,
+            _Args&& ... __args):
+        __val(std::forward<_Args>(__args)...){}
+    
     _Type& __get(in_place_index_t<0>){
         return __variant_storage<_Type>::__get(__val);
     }
@@ -1513,6 +1524,12 @@ public:
         __index(0)
     {}
 
+    template<typename _Alloc>
+    variant(std::allocator_arg_t ,_Alloc const& __alloc):
+        __storage(in_place<0>,std::allocator_arg_t(),__alloc),
+        __index(0)
+    {}
+    
     constexpr variant(typename std::conditional<__all_move_constructible<_Types...>::value,variant,__private_type>::type&& __other)
     noexcept(__noexcept_variant_move_construct<_Types...>::value):
         __index(__move_construct(__other))

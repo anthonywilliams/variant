@@ -1406,6 +1406,79 @@ void hash(){
     static_assert(std::is_same<decltype(hm(m)),size_t>::value);
 }
 
+unsigned allocate_count=0;
+unsigned deallocate_count=0;
+
+template <typename T> struct CountingAllocator
+{
+    using value_type = T;
+    using is_always_equal = std::true_type;
+    using pointer = T *;
+    using const_pointer = T const *;
+    using reference = T &;
+    using const_reference = T const &;
+
+
+    template <typename U> struct rebind
+    {
+        using other = CountingAllocator<U>;
+    };
+
+    template <typename U> CountingAllocator(CountingAllocator<U> const &) {}
+
+    CountingAllocator() {}
+
+    T *allocate(size_t count)
+    {
+        ++allocate_count;
+        auto *buf = malloc(count * sizeof(T));
+        return static_cast<T *>(buf);
+    }
+    void deallocate(T *p, size_t)
+    {
+        if (!p)
+            return;
+        ++deallocate_count;
+        free(p);
+    }
+
+    void destroy(T *p) { p->~T(); }
+
+    template <class... Args>
+    void construct(T* p, Args&&... args){
+        ::new (static_cast<void*>(p)) T(std::forward<Args>(args)...);
+    }
+};
+
+template <typename T, typename U>
+constexpr bool operator==(CountingAllocator<T> const &, CountingAllocator<U> const &)
+{
+   return true;
+}
+
+template <typename T, typename U>
+constexpr bool operator!=(CountingAllocator<T> const &, CountingAllocator<U> const &)
+{
+   return false;
+}
+
+
+void allocator_default_constructor(){
+    std::cout<<__FUNCTION__<<std::endl;
+
+    struct MyClass{
+        int i;
+        MyClass():
+            i(42){}
+    };
+
+    se::variant<MyClass,std::string> vi{std::allocator_arg_t(),CountingAllocator<MyClass>()};
+
+    assert(allocate_count==0);
+    assert(vi.index()==0);
+    assert(se::get<0>(vi).i==42);
+}
+
 int main(){
     initial_is_first_type();
     can_construct_first_type();
@@ -1485,4 +1558,5 @@ int main(){
     variant_with_no_types();
     monostate();
     hash();
+    allocator_default_constructor();
 }
