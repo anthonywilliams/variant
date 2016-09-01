@@ -1462,6 +1462,35 @@ constexpr bool operator!=(CountingAllocator<T> const &, CountingAllocator<U> con
    return false;
 }
 
+struct allocatable{
+
+    bool allocator_supplied;
+
+    allocatable():
+        allocator_supplied(false){}
+    template<typename Alloc>
+    allocatable(std::allocator_arg_t,Alloc const&):
+        allocator_supplied(true){}
+    
+};
+
+struct not_allocatable{
+
+    bool allocator_supplied;
+
+    not_allocatable():
+        allocator_supplied(false){}
+    template<typename Alloc>
+    not_allocatable(std::allocator_arg_t,Alloc const&):
+        allocator_supplied(true){}
+    
+};
+
+namespace std{
+template<typename Alloc>
+struct uses_allocator<allocatable,Alloc>:
+        true_type{};
+}
 
 void allocator_default_constructor(){
     std::cout<<__FUNCTION__<<std::endl;
@@ -1477,6 +1506,19 @@ void allocator_default_constructor(){
     assert(allocate_count==0);
     assert(vi.index()==0);
     assert(se::get<0>(vi).i==42);
+
+    se::variant<allocatable,std::string> v2{std::allocator_arg_t(),CountingAllocator<MyClass>()};
+
+    assert(allocate_count==0);
+    assert(v2.index()==0);
+    assert(se::get<0>(v2).allocator_supplied);
+
+    se::variant<not_allocatable,std::string> v3{std::allocator_arg_t(),CountingAllocator<MyClass>()};
+
+    assert(allocate_count==0);
+    assert(v3.index()==0);
+    assert(!se::get<0>(v3).allocator_supplied);
+    
 }
 
 int main(){
