@@ -781,6 +781,33 @@ __copy_construct_op_table<_Variant,__index_sequence<_Indices...>>::__apply[
         &__copy_construct_func<_Indices>...
     };
 
+template<typename _Variant,typename _Alloc,
+         typename _Indices=typename __variant_indices<_Variant>::__type>
+struct __copy_construct_alloc_op_table;
+
+template<typename _Variant,typename _Alloc,ptrdiff_t ... _Indices>
+struct __copy_construct_alloc_op_table<_Variant,_Alloc,__index_sequence<_Indices...>>{
+    typedef void(* const __func_type)(_Variant*,_Alloc const&,_Variant const&);
+    
+    template<ptrdiff_t _Index>
+    static void __copy_construct_func(
+        _Variant * __lhs,_Alloc const& __alloc,_Variant const& __rhs){
+        __lhs->template __emplace_construct<_Index>(
+            std::allocator_arg_t(),__alloc,
+            get<_Index>(__rhs));
+    }
+
+    static const __func_type __apply[sizeof...(_Indices)];
+};
+
+template<typename _Variant,typename _Alloc,ptrdiff_t ... _Indices>
+const typename __copy_construct_alloc_op_table<_Variant,_Alloc,__index_sequence<_Indices...>>::
+__func_type
+__copy_construct_alloc_op_table<_Variant,_Alloc,__index_sequence<_Indices...>>::__apply[
+    sizeof...(_Indices)]={
+        &__copy_construct_func<_Indices>...
+    };
+
 template<typename _Variant,
          typename _Indices=typename __variant_indices<_Variant>::__type>
 struct __copy_assign_op_table;
@@ -1440,6 +1467,8 @@ class variant:
     typedef __variant_base<variant<_Types...>,__all_trivially_destructible<_Types...>::__value> __base_type;
     friend __base_type;
     friend struct __copy_construct_op_table<variant>;
+    template<typename _Variant,typename _Alloc,typename _Indices>
+    friend struct __copy_construct_alloc_op_table;
     friend struct __copy_assign_op_table<variant>;
     friend struct __move_construct_op_table<variant>;
     friend struct __move_assign_op_table<variant>;
@@ -1485,6 +1514,16 @@ class variant:
         return __other_index;
     }
 
+    template<typename _Alloc>
+    ptrdiff_t __copy_construct(_Alloc const& __alloc,variant const& __other){
+        ptrdiff_t const __other_index=__other.index();
+        if(__other_index==-1)
+            return -1;
+        __copy_construct_alloc_op_table<variant,_Alloc>::__apply[__other_index](
+            this,__alloc,__other);
+        return __other_index;
+    }
+    
     template<size_t _Index,typename ... _Args>
     void __replace_construct(_Args&& ... __args){
         typedef typename __indexed_type<_Index,_Types...>::__type __this_type;
@@ -1640,7 +1679,22 @@ public:
         static_assert(std::is_constructible<_Type,_Args...>::value,"Type must be constructible from args");
     }
 
-    
+    template<typename _Alloc>
+    variant(
+        std::allocator_arg_t ,_Alloc const& __alloc,
+        typename std::conditional<__all_copy_constructible<_Types...>::value,variant,__private_type>::type& __other)
+    noexcept(__noexcept_variant_non_const_copy_construct<_Types...>::value):
+        __index(__copy_construct(__alloc,__other))
+    {}
+
+    template<typename _Alloc>
+    variant(
+        std::allocator_arg_t ,_Alloc const& __alloc,
+        typename std::conditional<__all_copy_constructible<_Types...>::value,variant,__private_type>::type const& __other)
+    noexcept(__noexcept_variant_const_copy_construct<_Types...>::value):
+                                                                __index(__copy_construct(__alloc,__other))
+    {}
+
     template<typename _Type>
     variant& operator=(_Type&& __x){
         constexpr size_t _Index=
