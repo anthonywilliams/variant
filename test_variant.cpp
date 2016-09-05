@@ -1464,26 +1464,39 @@ constexpr bool operator!=(CountingAllocator<T> const &, CountingAllocator<U> con
 
 struct allocatable{
 
-    bool allocator_supplied;
+    bool allocator_supplied=false;
+    bool was_moved=false;
 
-    allocatable():
-        allocator_supplied(false){}
+    allocatable(){}
     template<typename Alloc>
     allocatable(std::allocator_arg_t,Alloc const&):
         allocator_supplied(true){}
 
+    allocatable(allocatable const&)=default;
+    allocatable(allocatable&&):was_moved(true){}
+
     template<typename Alloc>
     allocatable(std::allocator_arg_t,Alloc const&,allocatable const&):
         allocator_supplied(true){}
-    
+
+    template<typename Alloc>
+    allocatable(std::allocator_arg_t,Alloc const&,allocatable &&):
+        allocator_supplied(true),was_moved(true){}
+
 };
 
 struct allocatable_no_arg{
 
-    bool allocator_supplied;
+    bool allocator_supplied=false;
+    bool was_moved=false;
 
-    allocatable_no_arg():
-        allocator_supplied(false){}
+    allocatable_no_arg(){}
+
+    allocatable_no_arg(allocatable_no_arg const&)=default;
+    allocatable_no_arg(allocatable_no_arg&&):
+        was_moved(true){}
+    
+    
     template<typename Alloc>
     allocatable_no_arg(Alloc const&):
         allocator_supplied(true){}
@@ -1491,15 +1504,23 @@ struct allocatable_no_arg{
     template<typename Alloc>
     allocatable_no_arg(Alloc const&,allocatable_no_arg const&):
         allocator_supplied(true){}
-    
+
+    template<typename Alloc>
+    allocatable_no_arg(Alloc const&,allocatable_no_arg &&):
+        allocator_supplied(true),was_moved(true){}
+
 };
 
 struct not_allocatable{
 
-    bool allocator_supplied;
+    bool allocator_supplied=false;
+    bool was_moved=false;
 
-    not_allocatable():
-        allocator_supplied(false){}
+    not_allocatable(){}
+    not_allocatable(not_allocatable const&)=default;
+    not_allocatable(not_allocatable&&):
+        was_moved(true){}
+
     template<typename Alloc>
     not_allocatable(std::allocator_arg_t,Alloc const&):
         allocator_supplied(true){}
@@ -1507,6 +1528,9 @@ struct not_allocatable{
     template<typename Alloc>
     not_allocatable(std::allocator_arg_t,Alloc const&,not_allocatable const&):
         allocator_supplied(true){}
+    template<typename Alloc>
+    not_allocatable(Alloc const&,not_allocatable &&):
+        allocator_supplied(true),was_moved(true){}
 };
 
 namespace std{
@@ -1789,6 +1813,98 @@ void allocator_copy_constructor_no_allocator_arg_support(){
     assert(se::get<1>(v2).allocator_supplied);
 }
 
+void allocator_move_constructor_no_allocator_support(){
+    std::cout<<__FUNCTION__<<std::endl;
+
+    struct MyClass{
+        int i;
+        bool was_moved=false;
+        
+        MyClass():
+            i(42){}
+
+        MyClass(const MyClass&)=default;
+        MyClass(MyClass&&):
+            i(42),was_moved(true){}
+    };
+
+    se::variant<MyClass,std::string> vis{se::in_place<MyClass>};
+    se::variant<MyClass,std::string> vi{std::allocator_arg_t(),CountingAllocator<MyClass>(),std::move(vis)};
+
+    assert(allocate_count==0);
+    assert(vi.index()==0);
+    assert(se::get<0>(vi).i==42);
+    assert(se::get<0>(vi).was_moved);
+
+    se::variant<std::string,MyClass> vis2{se::in_place<MyClass>};
+    se::variant<std::string,MyClass> vi2{std::allocator_arg_t(),CountingAllocator<MyClass>(),std::move(vis2)};
+
+    assert(allocate_count==0);
+    assert(vi2.index()==1);
+    assert(se::get<1>(vi2).i==42);
+    assert(se::get<1>(vi2).was_moved);
+
+    se::variant<not_allocatable,std::string> v1s{se::in_place<not_allocatable>};
+    se::variant<not_allocatable,std::string> v1{std::allocator_arg_t(),CountingAllocator<int>(),std::move(v1s)};
+
+    assert(allocate_count==0);
+    assert(v1.index()==0);
+    assert(!se::get<0>(v1).allocator_supplied);
+    assert(se::get<0>(v1).was_moved);
+
+    se::variant<std::string,not_allocatable> v2s{se::in_place<not_allocatable>};
+    se::variant<std::string,not_allocatable> v2{std::allocator_arg_t(),CountingAllocator<int>(),std::move(v2s)};
+
+    assert(allocate_count==0);
+    assert(v2.index()==1);
+    assert(!se::get<1>(v2).allocator_supplied);
+    assert(se::get<1>(v2).was_moved);
+}
+
+void allocator_move_constructor_allocator_arg_support(){
+    std::cout<<__FUNCTION__<<std::endl;
+
+    se::variant<allocatable,std::string> v1s{se::in_place<allocatable>};
+    se::variant<allocatable,std::string> v1{
+        std::allocator_arg_t(),CountingAllocator<int>(),std::move(v1s)};
+
+    assert(allocate_count==0);
+    assert(v1.index()==0);
+    assert(se::get<0>(v1).allocator_supplied);
+    assert(se::get<0>(v1).was_moved);
+
+    se::variant<std::string,allocatable> v2s{se::in_place<1>};
+    se::variant<std::string,allocatable> v2{
+        std::allocator_arg_t(),CountingAllocator<int>(),std::move(v2s)};
+
+    assert(allocate_count==0);
+    assert(v2.index()==1);
+    assert(se::get<1>(v2).allocator_supplied);
+    assert(se::get<1>(v2).was_moved);
+}
+
+void allocator_move_constructor_no_allocator_arg_support(){
+    std::cout<<__FUNCTION__<<std::endl;
+
+    se::variant<allocatable_no_arg,std::string> v1s{se::in_place<allocatable_no_arg>};
+    se::variant<allocatable_no_arg,std::string> v1{
+        std::allocator_arg_t(),CountingAllocator<int>(),std::move(v1s)};
+
+    assert(allocate_count==0);
+    assert(v1.index()==0);
+    assert(se::get<0>(v1).allocator_supplied);
+    assert(se::get<0>(v1).was_moved);
+
+    se::variant<std::string,allocatable_no_arg> v2s{se::in_place<allocatable_no_arg>};
+    se::variant<std::string,allocatable_no_arg> v2{
+        std::allocator_arg_t(),CountingAllocator<int>(),std::move(v2s)};
+
+    assert(allocate_count==0);
+    assert(v2.index()==1);
+    assert(se::get<1>(v2).allocator_supplied);
+    assert(se::get<1>(v2).was_moved);
+}
+
 int main(){
     initial_is_first_type();
     can_construct_first_type();
@@ -1881,4 +1997,7 @@ int main(){
     allocator_copy_constructor_no_allocator_support();
     allocator_copy_constructor_allocator_arg_support();
     allocator_copy_constructor_no_allocator_arg_support();
+    allocator_move_constructor_no_allocator_support();
+    allocator_move_constructor_allocator_arg_support();
+    allocator_move_constructor_no_allocator_arg_support();
 }

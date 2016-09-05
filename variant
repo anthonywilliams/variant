@@ -403,7 +403,7 @@ struct __storage_wrapper{
         typename std::enable_if<!std::is_default_constructible<_Dummy>::value,
         void (__storage_wrapper::*)()>::type = nullptr) {
     }
-    
+
     template<typename _First,typename ... _Args>
     __storage_wrapper(_First&& __first,_Args&& ... __args){
         __construct(&__storage,std::forward<_First>(__first),std::forward<_Args>(__args)...);
@@ -572,7 +572,7 @@ union __variant_data<_Type&>{
     constexpr _Type& __get_rref(in_place_index_t<0>) const{
         return __variant_storage<_Type&>::__get_rref(__val);
     }
-    
+
     void __destroy(in_place_index_t<0>){
         __variant_storage<_Type&>::__destroy(__val);
     }
@@ -628,7 +628,7 @@ union __variant_data<_Head,_Rest...>{
     constexpr _Head&& __get_rref(in_place_index_t<0>){
         return __head.__get_rref(in_place<0>);
     }
-    
+
     constexpr const _Head& __get(in_place_index_t<0>) const{
         return __head.__get(in_place<0>);
     }
@@ -636,7 +636,7 @@ union __variant_data<_Head,_Rest...>{
     constexpr const _Head&& __get_rref(in_place_index_t<0>) const{
         return __head.__get_rref(in_place<0>);
     }
-    
+
     template<size_t _Index>
     typename __indexed_type<_Index-1,_Rest...>::__type& __get(
         in_place_index_t<_Index>){
@@ -648,7 +648,7 @@ union __variant_data<_Head,_Rest...>{
         in_place_index_t<_Index>){
         return __rest.__get_rref(in_place<_Index-1>);
     }
-    
+
     template<size_t _Index>
     constexpr const typename __indexed_type<_Index-1,_Rest...>::__type& __get(
         in_place_index_t<_Index>) const{
@@ -660,8 +660,8 @@ union __variant_data<_Head,_Rest...>{
         in_place_index_t<_Index>) const{
         return __rest.__get_rref(in_place<_Index-1>);
     }
-    
-    
+
+
     void __destroy(in_place_index_t<0>){
         __head.__destroy(in_place<0>);
     }
@@ -711,7 +711,7 @@ struct __move_construct_op_table;
 template<typename _Variant,ptrdiff_t ... _Indices>
 struct __move_construct_op_table<_Variant,__index_sequence<_Indices...>>{
     typedef void(* const __func_type)(_Variant*,_Variant&);
-    
+
     template<ptrdiff_t _Index>
     static void __move_construct_func(
         _Variant * __lhs,_Variant& __rhs){
@@ -730,6 +730,33 @@ __move_construct_op_table<_Variant,__index_sequence<_Indices...>>::__apply[
         &__move_construct_func<_Indices>...
     };
 
+template<typename _Variant,typename _Alloc,
+         typename _Indices=typename __variant_indices<_Variant>::__type>
+struct __move_construct_alloc_op_table;
+
+template<typename _Variant,typename _Alloc,ptrdiff_t ... _Indices>
+struct __move_construct_alloc_op_table<_Variant,_Alloc,__index_sequence<_Indices...>>{
+    typedef void(* const __func_type)(_Variant*,_Alloc const&,_Variant&);
+
+    template<ptrdiff_t _Index>
+    static void __move_construct_func(
+        _Variant * __lhs,_Alloc const& __alloc,_Variant& __rhs){
+        __lhs->template __emplace_construct<_Index>(
+            std::allocator_arg_t(),__alloc,
+            std::move(get<_Index>(__rhs)));
+    }
+
+    static const __func_type __apply[sizeof...(_Indices)];
+};
+
+template<typename _Variant,typename _Alloc,ptrdiff_t ... _Indices>
+const typename __move_construct_alloc_op_table<_Variant,_Alloc,__index_sequence<_Indices...>>::
+__func_type
+__move_construct_alloc_op_table<_Variant,_Alloc,__index_sequence<_Indices...>>::__apply[
+    sizeof...(_Indices)]={
+        &__move_construct_func<_Indices>...
+    };
+
 template<typename _Variant,
          typename _Indices=typename __variant_indices<_Variant>::__type>
 struct __move_assign_op_table;
@@ -737,7 +764,7 @@ struct __move_assign_op_table;
 template<typename _Variant,ptrdiff_t ... _Indices>
 struct __move_assign_op_table<_Variant,__index_sequence<_Indices...>>{
     typedef void(* const __func_type)(_Variant*,_Variant&);
-    
+
     template<ptrdiff_t _Index>
     static void __move_assign_func(
         _Variant * __lhs,_Variant& __rhs){
@@ -762,7 +789,7 @@ struct __copy_construct_op_table;
 template<typename _Variant,ptrdiff_t ... _Indices>
 struct __copy_construct_op_table<_Variant,__index_sequence<_Indices...>>{
     typedef void(* const __func_type)(_Variant*,_Variant const&);
-    
+
     template<ptrdiff_t _Index>
     static void __copy_construct_func(
         _Variant * __lhs,_Variant const& __rhs){
@@ -788,7 +815,7 @@ struct __copy_construct_alloc_op_table;
 template<typename _Variant,typename _Alloc,ptrdiff_t ... _Indices>
 struct __copy_construct_alloc_op_table<_Variant,_Alloc,__index_sequence<_Indices...>>{
     typedef void(* const __func_type)(_Variant*,_Alloc const&,_Variant const&);
-    
+
     template<ptrdiff_t _Index>
     static void __copy_construct_func(
         _Variant * __lhs,_Alloc const& __alloc,_Variant const& __rhs){
@@ -815,7 +842,7 @@ struct __copy_assign_op_table;
 template<typename _Variant,ptrdiff_t ... _Indices>
 struct __copy_assign_op_table<_Variant,__index_sequence<_Indices...>>{
     typedef void(* const __func_type)(_Variant*,_Variant const&);
-    
+
     template<ptrdiff_t _Index>
     static void __copy_assign_func(
         _Variant * __lhs,_Variant const& __rhs){
@@ -840,7 +867,7 @@ struct __destroy_op_table;
 template<typename _Variant,ptrdiff_t ... _Indices>
 struct __destroy_op_table<_Variant,__index_sequence<_Indices...>>{
     typedef void(* const __func_type)(_Variant*);
-    
+
     template<ptrdiff_t _Index>
     static void __destroy_func(
         _Variant * __self){
@@ -867,7 +894,7 @@ struct __swap_op_table;
 template<typename _Variant,ptrdiff_t ... _Indices>
 struct __swap_op_table<_Variant,__index_sequence<_Indices...>>{
     typedef void(* const __func_type)(_Variant&,_Variant&);
-    
+
     template<ptrdiff_t _Index>
     static void __swap_func(
         _Variant & __lhs,_Variant & __rhs){
@@ -892,7 +919,7 @@ struct __equality_op_table;
 template<typename _Variant,ptrdiff_t ... _Indices>
 struct __equality_op_table<_Variant,__index_sequence<_Indices...>>{
     typedef bool(* const __compare_func_type)(_Variant const&,_Variant const&);
-    
+
     template<ptrdiff_t _Index>
     static constexpr bool __equality_compare_func(
         _Variant const& __lhs,_Variant const& __rhs){
@@ -917,7 +944,7 @@ struct __less_than_op_table;
 template<typename _Variant,ptrdiff_t ... _Indices>
 struct __less_than_op_table<_Variant,__index_sequence<_Indices...>>{
     typedef bool(* const __compare_func_type)(_Variant const&,_Variant const&);
-    
+
     template<ptrdiff_t _Index>
     static constexpr bool __less_than_compare_func(
         _Variant const& __lhs,_Variant const& __rhs){
@@ -1070,11 +1097,11 @@ struct __type_index_to_construct{
         (__rref_matches::__length>0) ||
         (__constructibles::__length==1),
         "For conversion construction of variants, exactly one type must be constructible");
-    
+
     typedef typename __combine_sequences<
         __direct_matches,__value_matches,__rref_matches,
         __constructibles>::__type __all_matches;
-    
+
     static constexpr ptrdiff_t __value=__first_index<__all_matches>::__value;
 };
 
@@ -1144,7 +1171,7 @@ template<typename _Variant,ptrdiff_t ... _Indices>
 struct __replace_construct_helper::__op_table<_Variant,__index_sequence<_Indices...>>{
     typedef void(* const __move_func_type)(_Variant*,_Variant&);
     typedef void(* const __copy_func_type)(_Variant*,_Variant const&);
-    
+
     template<ptrdiff_t _Index>
     static void __move_assign_func(
         _Variant * __lhs,_Variant& __rhs){
@@ -1157,7 +1184,7 @@ struct __replace_construct_helper::__op_table<_Variant,__index_sequence<_Indices
         _Variant * __lhs,_Variant const& __rhs){
         __lhs->template __replace_construct<_Index>(get<_Index>(__rhs));
     }
-    
+
     static const __move_func_type __move_assign[sizeof...(_Indices)];
     static const __copy_func_type __copy_assign[sizeof...(_Indices)];
 };
@@ -1213,7 +1240,7 @@ struct __backup_storage_op_table<
 {
     typedef void (*__move_func_type)(_Storage * __dest,_Storage& __source);
     typedef void (*__destroy_func_type)(_Storage * __obj);
-    
+
     template<size_t _Index>
     struct __helper{
         typedef __backup_storage_ops<_Index,_MaskIndex,_Storage> __ops;
@@ -1268,7 +1295,7 @@ struct __backup_storage{
                 &__backup);
         __backup_index=-1;
     }
-    
+
     ~__backup_storage(){
         if(__backup_index>=0){
             __op_table_type::__move_ops[__backup_index](
@@ -1471,9 +1498,11 @@ class variant:
     friend struct __copy_construct_alloc_op_table;
     friend struct __copy_assign_op_table<variant>;
     friend struct __move_construct_op_table<variant>;
+    template<typename _Variant,typename _Alloc,typename _Indices>
+    friend struct __move_construct_alloc_op_table;
     friend struct __move_assign_op_table<variant>;
     friend struct __destroy_op_table<variant>;
-    
+
     template<ptrdiff_t _Index,typename ... _Types2>
     friend struct __variant_accessor;
 
@@ -1489,19 +1518,30 @@ class variant:
             in_place<_Index>,std::forward<_Args>(__args)...);
         return  _Index;
     }
-    
+
     void __destroy_self(){
         if(valueless_by_exception())
             return;
         __destroy_op_table<variant>::__apply[index()](this);
         __index=-1;
     }
-    
+
     ptrdiff_t __move_construct(variant& __other){
         ptrdiff_t const __other_index=__other.index();
         if(__other_index==-1)
             return -1;
         __move_construct_op_table<variant>::__apply[__other_index](this,__other);
+        __other.__destroy_self();
+        return __other_index;
+    }
+
+    template<typename _Alloc>
+    ptrdiff_t __move_construct(_Alloc const& __alloc,variant& __other){
+        ptrdiff_t const __other_index=__other.index();
+        if(__other_index==-1)
+            return -1;
+        __move_construct_alloc_op_table<variant,_Alloc>::__apply[__other_index](
+            this,__alloc,__other);
         __other.__destroy_self();
         return __other_index;
     }
@@ -1523,7 +1563,7 @@ class variant:
             this,__alloc,__other);
         return __other_index;
     }
-    
+
     template<size_t _Index,typename ... _Args>
     void __replace_construct(_Args&& ... __args){
         typedef typename __indexed_type<_Index,_Types...>::__type __this_type;
@@ -1556,7 +1596,7 @@ class variant:
         __index=_Index;
         __backup.__destroy();
     }
-    
+
     template<size_t _Index,typename ... _Args>
     void __direct_replace(_Args&& ... __args) {
         __destroy_self();
@@ -1579,7 +1619,7 @@ public:
     {}
 
     constexpr variant(typename std::conditional<!__all_move_constructible<_Types...>::value,variant,__private_type>::type&& __other)=delete;
-    
+
     constexpr variant(typename std::conditional<__all_copy_constructible<_Types...>::value,variant,__private_type>::type& __other)
     noexcept(__noexcept_variant_non_const_copy_construct<_Types...>::value):
         __index(__copy_construct(__other))
@@ -1593,7 +1633,7 @@ public:
     {}
 
     constexpr variant(typename std::conditional<!__all_copy_constructible<_Types...>::value,variant,__private_type>::type const& __other)=delete;
-    
+
     template<typename _Type,typename ... _Args>
     explicit constexpr variant(in_place_type_t<_Type>,_Args&& ... __args):
         __storage(
@@ -1611,7 +1651,7 @@ public:
     {
         static_assert(std::is_constructible<typename __indexed_type<_Index,_Types...>::__type,_Args...>::value,"Type must be constructible from args");
     }
-    
+
     template<typename _Type>
     constexpr variant(_Type&& __x):
         __storage(
@@ -1639,9 +1679,9 @@ public:
         __storage(in_place<0>,std::allocator_arg_t(),__alloc),
         __index(0)
     {}
-    
+
     template<typename _Alloc,size_t _Index,typename ... _Args>
-    explicit variant(
+    variant(
         std::allocator_arg_t ,_Alloc const& __alloc,
         in_place_index_t<_Index>,_Args&& ... __args):
         __storage(in_place<_Index>,std::allocator_arg_t(),__alloc,
@@ -1659,7 +1699,7 @@ public:
     }
 
     template<typename _Alloc,typename _Type,typename ... _Args>
-    explicit variant(
+    variant(
         std::allocator_arg_t ,_Alloc const& __alloc,
         in_place_type_t<_Type>,_Args&& ... __args):
         __storage(
@@ -1681,19 +1721,22 @@ public:
 
     template<typename _Alloc>
     variant(
-        std::allocator_arg_t ,_Alloc const& __alloc,
-        typename std::conditional<__all_copy_constructible<_Types...>::value,variant,__private_type>::type& __other)
-    noexcept(__noexcept_variant_non_const_copy_construct<_Types...>::value):
+        std::allocator_arg_t ,_Alloc const& __alloc,variant& __other):
         __index(__copy_construct(__alloc,__other))
     {}
 
     template<typename _Alloc>
     variant(
-        std::allocator_arg_t ,_Alloc const& __alloc,
-        typename std::conditional<__all_copy_constructible<_Types...>::value,variant,__private_type>::type const& __other)
-    noexcept(__noexcept_variant_const_copy_construct<_Types...>::value):
-                                                                __index(__copy_construct(__alloc,__other))
+        std::allocator_arg_t ,_Alloc const& __alloc,variant const& __other):
+        __index(__copy_construct(__alloc,__other))
     {}
+
+    template<typename _Alloc>
+    variant(
+        std::allocator_arg_t ,_Alloc const& __alloc,variant&& __other):
+        __index(__move_construct(__alloc,__other))
+    {}
+
 
     template<typename _Type>
     variant& operator=(_Type&& __x){
@@ -1788,12 +1831,12 @@ public:
         __direct_replace<__type_index<_Type,_Types...>::__value>(
             std::forward<_Args>(__args)...);
     }
-    
+
     template<size_t _Index,typename ... _Args>
     void emplace(_Args&& ... __args){
         __direct_replace<_Index>(std::forward<_Args>(__args)...);
     }
-    
+
     constexpr bool valueless_by_exception() const noexcept{
         return __index==-1;
     }
@@ -1823,7 +1866,7 @@ template<>
 class variant<>{
 public:
     variant()=delete;
-    
+
     constexpr bool valueless_by_exception() const noexcept{
         return true;
     }
@@ -2032,7 +2075,7 @@ struct __visit_helper2{
             return __visit_helper2<_Index-1,_VariantIndex,_Indices...>::__visit(
                 __visitor,std::forward<_Variants>(__v)...);
         }
-        
+
     }
 };
 
