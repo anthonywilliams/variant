@@ -507,20 +507,47 @@ union __variant_data<_Type>{
 
     constexpr __variant_data():__dummy(){}
 
-    template<typename ... _Args>
-    constexpr __variant_data(in_place_index_t<0>,_Args&& ... __args):
-        __val(std::forward<_Args>(__args)...){}
+    constexpr __variant_data(in_place_index_t<0>):
+        __val(){}
 
+    template<typename _FirstArg>
+    constexpr __variant_data(
+        typename std::conditional<
+        !std::is_same<std::remove_cv_t<std::remove_reference_t<_FirstArg>>,
+        std::allocator_arg_t>::value,
+        in_place_index_t<0>,__dummy_type>::type,
+        _FirstArg&& __firstArg):
+        __val(std::forward<_FirstArg>(__firstArg)){}
+
+    template<typename _FirstArg,typename ... _Rest>
+    constexpr __variant_data(
+        typename std::conditional<
+        !std::is_same<std::remove_cv_t<std::remove_reference_t<_FirstArg>>,
+        std::allocator_arg_t>::value,
+        in_place_index_t<0>,__dummy_type>::type,
+        _FirstArg&& __firstArg,_Rest&& ... __rest):
+        __val(std::forward<_FirstArg>(__firstArg),std::forward<_Rest>(__rest)...){}
+    
     template<typename _Alloc,typename ... _Args>
-        constexpr __variant_data(
-            typename std::conditional<
-            !std::uses_allocator<_Type,_Alloc>::value,
-            in_place_index_t<0>,
-            __dummy_type>::type,
-            std::allocator_arg_t,_Alloc const&,
-            _Args&& ... __args):
+    constexpr __variant_data(
+        typename std::conditional<
+        !std::uses_allocator<_Type,_Alloc>::value,
+        in_place_index_t<0>,
+        __dummy_type>::type,
+        std::allocator_arg_t,_Alloc const&,
+        _Args&& ... __args):
         __val(std::forward<_Args>(__args)...){}
-
+    
+    template <typename _Alloc, typename... _Args>
+    __variant_data(
+        typename std::conditional<
+            std::uses_allocator<_Type, _Alloc>::value &&
+                std::is_constructible<_Type, std::allocator_arg_t,
+                                       _Alloc const &, _Args...>::value,
+            in_place_index_t<0>, __dummy_type>::type,
+        std::allocator_arg_t, _Alloc const &__alloc, _Args &&... __args)
+        : __val(std::allocator_arg_t(),__alloc,std::forward<_Args>(__args)...) {}
+    
     template <typename _Alloc, typename... _Args>
     __variant_data(
         typename std::conditional<
