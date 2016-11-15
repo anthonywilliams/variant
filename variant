@@ -2022,19 +2022,44 @@ struct __visitor_table{
     typedef variant<_Types...> __variant_type;
     typedef typename __visitor_return_type<_Visitor,_Types...>::__type __return_type;
     typedef __return_type (*__func_type)(_Visitor&,__variant_type&);
+    typedef __return_type (*__const_func_type)(_Visitor&,__variant_type const&);
+    typedef __return_type (*__rv_func_type)(_Visitor&,__variant_type&);
 
     template<typename _Type>
-    static __return_type __trampoline_func(_Visitor& __visitor,__variant_type& __v){
+    static constexpr __return_type __trampoline_func(_Visitor& __visitor,__variant_type& __v){
         return __visitor(get<_Type>(__v));
     }
 
-    static const __func_type __trampoline[sizeof...(_Types)];
+    template<typename _Type>
+    static constexpr __return_type __trampoline_rv_func(_Visitor& __visitor,__variant_type& __v){
+        return __visitor(get<_Type>(std::move(__v)));
+    }
+    
+    template <typename _Type>
+    static constexpr __return_type
+    __trampoline_const_func(_Visitor &__visitor, __variant_type const &__v) {
+        return __visitor(get<_Type>(__v));
+    }
+
+    static constexpr __func_type __trampoline[sizeof...(_Types)]={
+        &__trampoline_func<_Types>...
+    };
+    static constexpr __const_func_type __trampoline_const[sizeof...(_Types)]={
+        &__trampoline_const_func<_Types>...
+    };
+    static constexpr __rv_func_type __trampoline_rv[sizeof...(_Types)]={
+        &__trampoline_rv_func<_Types>...
+    };
 };
 
 template<typename _Visitor,typename ... _Types>
-const typename __visitor_table<_Visitor,_Types...>::__func_type __visitor_table<_Visitor,_Types...>::__trampoline[sizeof...(_Types)]={
-        &__trampoline_func<_Types>...
-    };
+constexpr typename __visitor_table<_Visitor,_Types...>::__func_type __visitor_table<_Visitor,_Types...>::__trampoline[sizeof...(_Types)];
+
+template<typename _Visitor,typename ... _Types>
+constexpr typename __visitor_table<_Visitor,_Types...>::__const_func_type __visitor_table<_Visitor,_Types...>::__trampoline_const[sizeof...(_Types)];
+
+template<typename _Visitor,typename ... _Types>
+constexpr typename __visitor_table<_Visitor,_Types...>::__rv_func_type __visitor_table<_Visitor,_Types...>::__trampoline_rv[sizeof...(_Types)];
 
 template<typename _Visitor,typename ... _Types>
 constexpr typename __visitor_return_type<_Visitor,_Types...>::__type
@@ -2044,115 +2069,171 @@ visit(_Visitor&& __visitor,variant<_Types...>& __v){
     return __visitor_table<_Visitor,_Types...>::__trampoline[__v.index()](__visitor,__v);
 }
 
-template<typename _Visitor,typename ... _Variants>
-struct __multi_visitor_return_type{
-    typedef decltype(std::declval<_Visitor&>()(get<0>(std::declval<_Variants>())...))
-    __type;
-};
-
-template<size_t _VariantIndex,typename _Indices>
-struct __visit_helper;
-
-template<ptrdiff_t ... _Indices>
-struct __visit_helper<0,__index_sequence<_Indices...>>{
-    template<typename _Visitor,typename ... _Variants>
-    static constexpr typename __multi_visitor_return_type<_Visitor,_Variants...>::__type
-    __visit(_Visitor& __visitor,_Variants& ... __v){
-        return __visitor(get<_Indices>(__v)...);
-    }
-};
-
-template<size_t _Index,typename ... _Args>
-struct __arg_selector_t;
-
-template<typename _Head,typename ... _Rest>
-struct __arg_selector_t<0,_Head,_Rest...>{
-    typedef _Head __type;
-
-    static constexpr __type& __select(_Head& __head,_Rest& ...){
-        return __head;
-    }
-};
-
-template<size_t _Index,typename _Head,typename ... _Rest>
-struct __arg_selector_t<_Index,_Head,_Rest...>{
-    typedef typename __arg_selector_t<_Index-1,_Rest...>::__type __type;
-    static constexpr __type& __select(_Head&,_Rest& ... __rest){
-        return __arg_selector_t<_Index-1,_Rest...>::__select(__rest...);
-    }
-};
-
-template<size_t _Index,typename ... _Args>
-constexpr typename __arg_selector_t<_Index,_Args...>::__type&& __arg_selector(_Args&& ... __args){
-    return std::forward<typename __arg_selector_t<_Index,_Args...>::__type>(
-        __arg_selector_t<_Index,_Args...>::__select(__args...));
+template <typename _Visitor, typename... _Types>
+constexpr typename __visitor_return_type<_Visitor, _Types...>::__type
+visit(_Visitor &&__visitor, const variant<_Types...> &__v) {
+    if (__v.valueless_by_exception())
+        throw bad_variant_access("Visiting of empty variant");
+    return __visitor_table<
+        _Visitor, _Types...>::__trampoline_const[__v.index()](__visitor, __v);
 }
 
-template<ptrdiff_t _Index,size_t _VariantIndex,ptrdiff_t ... _Indices>
-struct __visit_helper2{
-    template<typename _Visitor,typename ... _Variants>
-    static constexpr typename __multi_visitor_return_type<_Visitor,_Variants...>::__type
-    __visit(_Visitor& __visitor,_Variants&& ... __v){
-        if(__arg_selector<_VariantIndex-1>(__v...).index()==_Index){
-            return __visit_helper<
-                _VariantIndex-1,__index_sequence<_Index,_Indices...>>::
-                __visit(__visitor,std::forward<_Variants>(__v)...);
-        }
-        else{
-            return __visit_helper2<_Index-1,_VariantIndex,_Indices...>::__visit(
-                __visitor,std::forward<_Variants>(__v)...);
-        }
-
-    }
-};
-
-template<size_t _VariantIndex,ptrdiff_t ... _Indices>
-struct __visit_helper2<-1,_VariantIndex,_Indices...>{
-    template<typename _Visitor,typename ... _Variants>
-    static constexpr typename __multi_visitor_return_type<_Visitor,_Variants...>::__type
-    __visit(_Visitor& __visitor,_Variants&& ... __v){
+template <typename _Visitor, typename... _Types>
+constexpr typename __visitor_return_type<_Visitor, _Types...>::__type
+visit(_Visitor &&__visitor, variant<_Types...> &&__v) {
+    if (__v.valueless_by_exception())
         throw bad_variant_access("Visiting of empty variant");
+    return __visitor_table<
+        _Visitor, _Types...>::__trampoline_rv[__v.index()](__visitor, __v);
+}
+
+template <typename _Visitor, typename _First, typename _Second,
+          typename... _Variants>
+struct __multi_visitor_return_type {
+    typedef decltype(
+        std::declval<_Visitor &>()(
+            get<0>(std::declval<_First>()), get<0>(std::declval<_Second>()),
+            get<0>(std::declval<_Variants>())...)) __type;
+};
+
+
+template<size_t _Count,typename _CurrentSequence=__index_sequence<> >
+struct __make_index_sequence{
+    typedef typename __make_index_sequence<
+        _Count - 1, typename _CurrentSequence::__next>::type type;
+};
+
+template<typename _CurrentSequence>
+struct __make_index_sequence<0,_CurrentSequence>{
+    typedef _CurrentSequence type;
+};
+
+template <typename _ReturnType, typename _Visitor, typename _Args,
+          ptrdiff_t... _Indices>
+constexpr _ReturnType __apply_visitor_impl(
+    _Visitor &__visitor, _Args &__args, __index_sequence<_Indices...>) {
+    return __visitor(std::get<_Indices>(__args)...);
+}
+
+template<typename _ReturnType,typename _Visitor,typename _Args>
+constexpr _ReturnType __apply_visitor(_Visitor& __visitor,_Args&& __args){
+    return __apply_visitor_impl<_ReturnType>(
+        __visitor, __args,
+        typename __make_index_sequence<std::tuple_size<_Args>::value>::type());
+}
+
+template<typename _Visitor,typename _ReturnType,typename _Args,typename ... _Variants>
+struct __multivisitor;
+
+template<typename ... _Variants>
+struct __mv_variant_list{
+
+    std::tuple<_Variants&...> __variants;
+
+    constexpr __mv_variant_list(_Variants& ... __variants_):
+        __variants(__variants_...){}
+
+    
+    
+};
+
+template<typename _Tuple,typename _Extra>
+struct __add_to_tuple;
+
+template<typename ... _TupleTypes,typename _Extra>
+struct __add_to_tuple<std::tuple<_TupleTypes...>,_Extra>{
+    typedef std::tuple<_TupleTypes...,_Extra&&> type;
+
+    template<ptrdiff_t ... _Indices>
+    static constexpr type __add_impl(std::tuple<_TupleTypes...> &__args, _Extra &&__extra,
+                           __index_sequence<_Indices...>) {
+        return type(std::get<_Indices>(__args)...,std::forward<_Extra>(__extra));
+    }
+
+    static constexpr type __add(std::tuple<_TupleTypes...> &__args, _Extra &&__extra) {
+        return __add_impl(
+            __args, std::forward<_Extra>(__extra),
+            typename __make_index_sequence<sizeof...(_TupleTypes)>::type());
     }
 };
 
-template<typename _Variant>
-struct __variant_type_count;
 
-template<typename ... _Types>
-struct __variant_type_count<variant<_Types...>>{
-    static constexpr size_t __value=sizeof...(_Types);
-};
+template<typename _Visitor,typename _ReturnType,typename _Args>
+struct __multivisitor<_Visitor,_ReturnType,_Args>{
+    _Visitor& __visitor;
+    _Args __args;
 
-template<typename _Variant>
-struct __variant_type_count<_Variant&>{
-    static constexpr size_t __value=__variant_type_count<_Variant>::__value;
-};
+    constexpr __multivisitor(
+        _Visitor &__visitor_, _Args &&__args_,
+        __mv_variant_list<> __variants):
+        __visitor(__visitor_), __args(__args_){}
 
-template<typename _Variant>
-struct __variant_type_count<_Variant const&>{
-    static constexpr size_t __value=__variant_type_count<_Variant>::__value;
-};
-
-template<size_t _VariantIndex,ptrdiff_t ... _Indices>
-struct __visit_helper<_VariantIndex,__index_sequence<_Indices...>>{
-
-    template<typename _Visitor,typename ... _Variants>
-    static constexpr typename __multi_visitor_return_type<_Visitor,_Variants...>::__type
-    __visit(_Visitor& __visitor,_Variants&& ... __v){
-        return __visit_helper2<
-            __variant_type_count<
-                typename __arg_selector_t<
-                    _VariantIndex-1,_Variants...>::__type>::__value-1,
-            _VariantIndex,_Indices...>::__visit(
-                __visitor,std::forward<_Variants&&>(__v)...);
+    constexpr __multivisitor(_Visitor &__visitor_):
+        __visitor(__visitor_), __args(){}
+    
+    template <typename _VisitVal>
+    constexpr _ReturnType operator()(_VisitVal &&__thisval) {
+        typedef __add_to_tuple<_Args,_VisitVal> __add_args;
+        return __apply_visitor<_ReturnType>(
+            __visitor,
+            __add_args::__add(__args, std::forward<_VisitVal>(__thisval)));
     }
 };
+
+
+template <typename _Visitor, typename _ReturnType, typename _Args,
+          typename _First, typename... _Variants>
+struct __multivisitor<_Visitor,_ReturnType,_Args,_First,_Variants...> {
+
+    _Visitor& __visitor;
+    _Args __args;
+    _First&& __first;
+    __mv_variant_list<_Variants...> __remaining_variants;
+
+    constexpr __multivisitor(
+        _Visitor &__visitor_, _Args &&__args_,
+        __mv_variant_list<_First, _Variants...> __variants)
+        : __visitor(__visitor_), __args(__args_),
+          __first(__variants.__get_first()),
+          __remaining_variants(__variants.__get_remainder()){}
+
+    constexpr __multivisitor(
+        _Visitor &__visitor_, _First&& __first_,
+        _Variants&& ... __variants_):
+        __visitor(__visitor_), __args(),
+        __first(std::forward<_First>(__first_)),
+        __remaining_variants(std::forward<_Variants>(__variants_)...){}
+    
+    template <typename _VisitVal>
+    constexpr _ReturnType operator()(_VisitVal &&__thisval) {
+        typedef __add_to_tuple<_Args,_VisitVal> __add_args;
+        typedef typename __add_args::type __args_type;
+
+        return visit(
+            __multivisitor<_Visitor, _ReturnType, __args_type, _Variants...>(
+                __visitor,
+                __add_args::__add(__args, std::forward<_VisitVal>(__thisval)),
+                std::move(__remaining_variants)),
+            std::forward<_First>(__first));
+    }
+};
+
+
+template<typename _Visitor,typename _First,typename ... _Variants>
+constexpr typename __multi_visitor_return_type<_Visitor,_First,_Variants...>::__type
+__multivisit(_Visitor& __visitor,_First&& __first,_Variants&& ... __v){
+    typedef typename __multi_visitor_return_type<
+        _Visitor, _First, _Variants...>::__type __return_type;
+    return visit(
+        __multivisitor<_Visitor,__return_type, std::tuple<>,_Variants...>(
+            __visitor, std::forward<_Variants>(__v)...),
+        __first);
+}
 
 template<typename _Visitor,typename ... _Variants>
 constexpr typename __multi_visitor_return_type<_Visitor,_Variants...>::__type
 visit(_Visitor&& __visitor,_Variants&& ... __v){
-    return __visit_helper<sizeof...(_Variants),__index_sequence<>>::__visit(
-        __visitor,std::forward<_Variants>(__v)...);
+    return __multivisit(__visitor,std::forward<_Variants>(__v)...);
 }
 
 template<typename ... _Types>
