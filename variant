@@ -2126,15 +2126,27 @@ template<typename _Visitor,typename _ReturnType,typename _Args,typename ... _Var
 struct __multivisitor;
 
 template<typename ... _Variants>
-struct __mv_variant_list{
+struct __mv_variant_list;
 
-    std::tuple<_Variants&...> __variants;
+template<typename _First,typename ... _Variants>
+struct __mv_variant_list<_First,_Variants...>{
+    _First& __first;
+    __mv_variant_list<_Variants...> __rest;
+    constexpr __mv_variant_list(_First& __first_,_Variants& ... __variants_):
+        __first(__first_),__rest(__variants_...){}
 
-    constexpr __mv_variant_list(_Variants& ... __variants_):
-        __variants(__variants_...){}
 
-    
-    
+    constexpr _First& __get_first() const{
+        return __first;
+    }
+
+    constexpr __mv_variant_list<_Variants...> __get_remainder() const{
+        return __rest;
+    }
+};
+
+template<>
+struct __mv_variant_list<>{
 };
 
 template<typename _Tuple,typename _Extra>

@@ -721,6 +721,26 @@ struct VisitorISD{
     }
 };
 
+template<size_t>
+struct MarkerArg{};
+
+struct ThreeVariantVisitor{
+
+    size_t a1,a2,a3;
+
+    ThreeVariantVisitor():
+        a1(0),a2(0),a3(0)
+    {}
+
+    template<size_t A1,size_t A2,size_t A3>
+    void operator()(MarkerArg<A1>,MarkerArg<A2>,MarkerArg<A3>){
+        a1=A1;
+        a2=A2;
+        a3=A3;
+    }
+};
+
+
 void multivisitor(){
     std::cout<<__FUNCTION__<<std::endl;
     se::variant<int,char,std::string> v(42);
@@ -754,6 +774,19 @@ void multivisitor(){
         assert(!"Visiting empty should throw");
     }
     catch(se::bad_variant_access){}
+
+    se::variant<MarkerArg<0>,MarkerArg<1> > mv1{MarkerArg<1>()};
+    se::variant<MarkerArg<10>,MarkerArg<11>,MarkerArg<21> > mv2{MarkerArg<21>()};
+    se::variant<MarkerArg<100>, MarkerArg<101>, MarkerArg<201>, MarkerArg<301>>
+        mv3{MarkerArg<100>()};
+
+    ThreeVariantVisitor tvv;
+
+    se::visit(tvv,mv1,mv2,mv3);
+
+    assert(tvv.a1==1);
+    assert(tvv.a2==21);
+    assert(tvv.a3==100);
 }
 
 void sizes(){
