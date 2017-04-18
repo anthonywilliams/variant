@@ -2178,7 +2178,7 @@ struct __multivisitor<_Visitor,_ReturnType,_Args>{
     constexpr __multivisitor(
         _Visitor &__visitor_, _Args &&__args_,
         __mv_variant_list<> __variants):
-        __visitor(__visitor_), __args(__args_){}
+        __visitor(__visitor_), __args(std::forward<_Args>(__args_)){}
 
     constexpr __multivisitor(_Visitor &__visitor_):
         __visitor(__visitor_), __args(){}
@@ -2205,7 +2205,7 @@ struct __multivisitor<_Visitor,_ReturnType,_Args,_First,_Variants...> {
     constexpr __multivisitor(
         _Visitor &__visitor_, _Args &&__args_,
         __mv_variant_list<_First, _Variants...> __variants)
-        : __visitor(__visitor_), __args(__args_),
+        : __visitor(__visitor_), __args(std::forward<_Args>(__args_)),
           __first(__variants.__get_first()),
           __remaining_variants(__variants.__get_remainder()){}
 
