@@ -2154,7 +2154,7 @@ struct __add_to_tuple;
 
 template<typename ... _TupleTypes,typename _Extra>
 struct __add_to_tuple<std::tuple<_TupleTypes...>,_Extra>{
-    typedef std::tuple<_TupleTypes...,_Extra&&> type;
+    typedef std::tuple<std::remove_reference_t<_TupleTypes>...,_Extra&&> type;
 
     template<ptrdiff_t ... _Indices>
     static constexpr type __add_impl(std::tuple<_TupleTypes...> &__args, _Extra &&__extra,
